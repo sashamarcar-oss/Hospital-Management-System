@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute, GuestRoute, RoleRoute } from "@/components/auth/guards";
 import { AppLayout } from "@/components/layout/app-layout";
 import { LoginPage } from "@/features/auth/login-page";
@@ -48,6 +48,7 @@ import { PatientPortalPage } from "@/features/portal/patient-portal-page";
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<GuestRoute><Navigate to="/login" replace /></GuestRoute>} />
       <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
       <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
       <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
