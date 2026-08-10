@@ -1,12 +1,19 @@
 # ---------- Python / Django ----------
+
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Virtual environments
 env/
 venv/
 .venv/
+backend/venv/
+backend/.venv/
+
+# Python packaging
 .eggs/
 *.egg-info/
 build/
@@ -17,15 +24,21 @@ share/python-wheels/
 *.manifest
 *.spec
 
-# Django
+# ---------- Django ----------
+
 *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+
+# User uploaded files
 media/
+
+# Generated static files
 staticfiles/
 
-# Testing / coverage
+# ---------- Testing / coverage ----------
+
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -37,28 +50,38 @@ coverage.xml
 .hypothesis/
 
 # ---------- Environment / secrets ----------
+
 .env
 .env.*
 !.env.example
+
 *.pem
 *.key
 
-# ---------- Node / Vite (frontend) ----------
+# ---------- Node / Vite ----------
+
 node_modules/
+frontend/node_modules/
+
 dist/
+frontend/dist/
+
 dist-ssr/
 *.local
 .vite/
 
 # ---------- IDE / editor ----------
+
 .idea/
 .vscode/
 *.swp
 *.swo
 
 # ---------- OS ----------
+
 .DS_Store
 Thumbs.db
 
 # ---------- Local tooling ----------
+
 .opencode/
