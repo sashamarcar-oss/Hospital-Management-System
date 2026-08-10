@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 
-export const API_URL = "/api";
+export const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const TOKEN_STORAGE_KEY = "hms_tokens";
 export const USER_STORAGE_KEY = "hms_user";
