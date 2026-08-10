@@ -149,11 +149,35 @@ SPECTACULAR_SETTINGS = {
 }
 
 # CORS
-CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173", "http://127.0.0.1:5173"]
-)
-CORS_ALLOW_CREDENTIALS = True
+# ---------------------------------------------------------------------------
+# CORS / CSRF
+# ---------------------------------------------------------------------------
 
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+
+        # Vercel production/deployment URLs
+        "https://hospital-management-system-k6a7-git-main-caren-m-s-projects.vercel.app",
+        "https://hospital-management-system-anuh5f08h-caren-m-s-projects.vercel.app",
+    ],
+)
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+
+        # Vercel production/deployment URLs
+        "https://hospital-management-system-k6a7-git-main-caren-m-s-projects.vercel.app",
+        "https://hospital-management-system-anuh5f08h-caren-m-s-projects.vercel.app",
+    ],
+)
+
+CORS_ALLOW_CREDENTIALS = True
 # File upload validation
 MAX_UPLOAD_SIZE_MB = 10
 ALLOWED_DOCUMENT_TYPES = [
