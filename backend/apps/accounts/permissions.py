@@ -6,6 +6,7 @@ class HasPermission(BasePermission):
 
     code = None
     write_code = None
+    create_code = None
 
     def has_permission(self, request, view):
         user = request.user
@@ -15,7 +16,13 @@ class HasPermission(BasePermission):
             return True
         if self.code is None:
             return True
-        target = self.write_code if (request.method not in SAFE_METHODS and self.write_code) else self.code
+        action = getattr(view, "action", None)
+        if request.method == "POST" and action == "create" and self.create_code:
+            target = self.create_code
+        elif request.method not in SAFE_METHODS and self.write_code:
+            target = self.write_code
+        else:
+            target = self.code
         return user.has_permission_code(target)
 
 

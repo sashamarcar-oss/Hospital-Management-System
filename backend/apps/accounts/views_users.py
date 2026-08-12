@@ -7,6 +7,7 @@ from apps.accounts.permissions import HasPermission
 from apps.accounts.serializers import (
     PermissionSerializer,
     RoleSerializer,
+    UserBriefSerializer,
     UserSerializer,
 )
 from apps.core.models import AuditLog
@@ -34,6 +35,25 @@ class UserViewSet(viewsets.ModelViewSet):
             request=request,
             previous_value=previous,
             new_value=new,
+        )
+
+    def get_permissions(self):
+        if self.action == "doctors":
+            return [HasPermission()]
+        return super().get_permissions()
+
+    @action(detail=False, methods=["get"])
+    def doctors(self, request):
+        """Brief list of doctors, optionally filtered by department (for booking forms)."""
+        qs = self.queryset.filter(
+            role__code="doctor",
+            is_active=True,
+        ).select_related("role", "department")
+        department = request.query_params.get("department")
+        if department:
+            qs = qs.filter(department_id=department)
+        return Response(
+            UserBriefSerializer(qs.order_by("first_name", "last_name"), many=True).data
         )
 
     def perform_create(self, serializer):

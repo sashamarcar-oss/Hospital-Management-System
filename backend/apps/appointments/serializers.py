@@ -24,6 +24,24 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs.get("end_time") and attrs.get("start_time") and attrs.get("end_time") <= attrs.get("start_time"):
             raise serializers.ValidationError({"end_time": "End time must be after start time."})
+
+        doctor = attrs.get("doctor", getattr(self.instance, "doctor", None))
+        department = attrs.get("department", getattr(self.instance, "department", None))
+
+        if doctor and not doctor.is_active:
+            raise serializers.ValidationError({"doctor": "Select an active doctor."})
+
+        if (
+            doctor
+            and doctor.role
+            and doctor.role.code == "doctor"
+            and doctor.department_id
+            and department
+            and doctor.department_id != department.id
+        ):
+            raise serializers.ValidationError(
+                {"doctor": "Select a doctor assigned to the selected department."}
+            )
         return attrs
 
     def get_queue_entry(self, obj):

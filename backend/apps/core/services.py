@@ -47,7 +47,7 @@ def notify(recipient, title, message, notification_type=Notification.TYPE_GENERA
     try:
         from apps.core.tasks import send_notification_email
 
-        send_notification_email.delay(notification.id)
+        send_notification_email.apply_async(args=[notification.id], retry=False)
     except Exception:
         # Redis/Celery unavailable - email silently skipped, in-app notification remains.
         pass

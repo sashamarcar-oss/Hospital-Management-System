@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Appointment, Department, Paginated, User } from "@/lib/types";
+import type { Appointment, Department, Paginated, UserBrief } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { handleMutationError } from "@/lib/mutation-error";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { PatientSelect } from "@/components/common/patient-select";
 import { PRIORITIES, PRIORITY_LABELS } from "@/lib/constants";
-import { useAuth } from "@/hooks/use-auth";
 
 const schema = z
   .object({
     patient: z.number({ message: "Select a patient" }),
-    doctor: z.number().nullable().optional(),
-    department: z.number().nullable().optional(),
+    doctor: z.number({ message: "Select a doctor" }),
+    department: z.number({ message: "Select a department" }),
     appointment_date: z.string().min(1, "Date is required"),
     start_time: z.string().min(1, "Start time is required"),
     end_time: z.string().min(1, "End time is required"),
@@ -58,8 +57,8 @@ export function AppointmentBookingForm({
     resolver: zodResolver(schema),
     defaultValues: {
       patient: initialPatientId ?? (undefined as unknown as number),
-      doctor: undefined as unknown as number | null,
-      department: undefined as unknown as number | null,
+      doctor: undefined as unknown as number,
+      department: undefined as unknown as number,
       appointment_date: "",
       start_time: "",
       end_time: "",
@@ -84,33 +83,32 @@ export function AppointmentBookingForm({
         .then((r) => r.data),
   });
 
-  const { data: doctors } = useQuery({
+  const { data: doctors, isLoading: isLoadingDoctors, isError: isDoctorsError } = useQuery({
     queryKey: ["users", "doctors"],
-    queryFn: () => api.get<Paginated<User>>("/users/", { params: { role: "doctor", page_size: 100 } }).then((r) => r.data),
+    queryFn: () => api.get<UserBrief[]>("/users/doctors/").then((r) => r.data),
   });
 
-  const { data: departmentDoctors } = useQuery({
+  const {
+    data: departmentDoctors,
+    isLoading: isLoadingDepartmentDoctors,
+    isError: isDepartmentDoctorsError,
+  } = useQuery({
     queryKey: ["users", "doctors", "department", departmentId],
     queryFn: () =>
       api
-        .get<Paginated<User>>("/users/", {
-          params: { role: "doctor", department: departmentId, page_size: 100 },
-        })
+        .get<UserBrief[]>("/users/doctors/", { params: { department: departmentId } })
         .then((r) => r.data),
     enabled: !!departmentId,
   });
 
-  const availableDoctors = departmentId ? departmentDoctors?.results ?? [] : doctors?.results ?? [];
+  const availableDoctors = departmentId ? departmentDoctors ?? [] : doctors ?? [];
+  const isLoadingAvailableDoctors = departmentId ? isLoadingDepartmentDoctors : isLoadingDoctors;
+  const hasDoctorsError = departmentId ? isDepartmentDoctorsError : isDoctorsError;
 
   const mutation = useMutation({
     mutationFn: (values: AppointmentForm) =>
       api
-        .post<Appointment>("/appointments/", {
-          ...values,
-          patient: values.patient,
-          doctor: values.doctor ?? null,
-          department: values.department ?? null,
-        })
+        .post<Appointment>("/appointments/", values)
         .then((r) => r.data),
     onSuccess: (appointment) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -156,8 +154,8 @@ export function AppointmentBookingForm({
                   <Select
                     value={field.value ? String(field.value) : ""}
                     onValueChange={(v) => {
-                      field.onChange(v ? Number(v) : null);
-                      form.setValue("doctor", null);
+                      field.onChange(v ? Number(v) : undefined);
+                      form.setValue("doctor", undefined as unknown as number);
                     }}
                   >
                     <SelectTrigger>
@@ -185,10 +183,19 @@ export function AppointmentBookingForm({
                 <FormControl>
                   <Select
                     value={field.value ? String(field.value) : ""}
-                    onValueChange={(v) => field.onChange(v ? Number(v) : null)}
+                    onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                    disabled={isLoadingAvailableDoctors || hasDoctorsError}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select doctor" />
+                      <SelectValue
+                        placeholder={
+                          isLoadingAvailableDoctors
+                            ? "Loading doctors..."
+                            : hasDoctorsError
+                              ? "Unable to load doctors"
+                              : "Select doctor"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {availableDoctors.map((d) => (
@@ -196,6 +203,11 @@ export function AppointmentBookingForm({
                           Dr. {d.first_name} {d.last_name}
                         </SelectItem>
                       ))}
+                      {!isLoadingAvailableDoctors && !hasDoctorsError && availableDoctors.length === 0 && (
+                        <SelectItem value="__none__" disabled>
+                          No doctors available{departmentId ? " in this department" : ""}
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </FormControl>

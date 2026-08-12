@@ -5,7 +5,7 @@ from django.core.mail import send_mail
 from apps.core.models import Notification
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=3, ignore_result=True)
 def send_notification_email(self, notification_id):
     try:
         notification = Notification.objects.get(id=notification_id)

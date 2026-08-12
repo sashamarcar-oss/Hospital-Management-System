@@ -83,6 +83,7 @@ ROLE_PERMISSIONS = {
         "staff.update", "departments.view", "departments.create", "departments.update",
         "reports.view", "reports.view_financial", "reports.view_operational",
         "reports.export", "audit.view", "documents.view", "documents.download",
+        "settings.manage_users", "settings.manage_permissions",
         "notifications.view",
     ],
     "receptionist": [
@@ -90,7 +91,7 @@ ROLE_PERMISSIONS = {
         "patients.print_summary", "appointments.view", "appointments.create",
         "appointments.update", "appointments.checkin", "appointments.reschedule",
         "appointments.cancel", "queue.view", "queue.create", "queue.update",
-        "vitals.view", "admissions.view", "notifications.view",
+        "departments.view", "vitals.view", "admissions.view", "notifications.view",
     ],
     "doctor": [
         "dashboard.view", "patients.view", "patients.print_summary", "appointments.view",
@@ -130,7 +131,8 @@ ROLE_PERMISSIONS = {
     "hr": [
         "dashboard.view", "staff.view", "staff.create", "staff.update",
         "staff.delete", "staff.manage_leave", "staff.manage_attendance",
-        "departments.view", "departments.update", "notifications.view",
+        "departments.view", "departments.update", "settings.manage_permissions",
+        "notifications.view",
     ],
     "patient": [
         "appointments.view", "appointments.create", "appointments.reschedule",

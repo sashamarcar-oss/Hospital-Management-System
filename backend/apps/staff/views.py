@@ -24,6 +24,7 @@ class StaffViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "staff.view"
     write_code = "staff.update"
+    create_code = "staff.create"
     search_fields = ["employee_id", "user__first_name", "user__last_name", "user__email", "user__phone", "job_title"]
     filterset_fields = ["employment_status", "user__department", "user__role"]
     ordering_fields = ["employee_id", "date_joined"]

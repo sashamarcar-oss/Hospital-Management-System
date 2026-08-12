@@ -19,6 +19,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "appointments.view"
     write_code = "appointments.update"
+    create_code = "appointments.create"
     filterset_fields = ["status", "priority", "appointment_date", "doctor", "patient", "department"]
     search_fields = [
         "patient__first_name", "patient__last_name", "patient__patient_number",
@@ -44,6 +45,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
+        if self.request.user.in_roles("patient"):
+            linked = getattr(self.request.user, "patient_account", None)
+            if linked:
+                serializer.validated_data["patient"] = linked
         appointment = serializer.save(created_by=self.request.user)
         self._audit(self.request, AuditLog.ACTION_CREATE, appointment)
         if self.request.user.in_roles("doctor", "receptionist", "admin"):

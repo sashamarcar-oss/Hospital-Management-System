@@ -87,16 +87,13 @@ export function PatientRegisterPage() {
       success("Patient registered", `Record ${patient.patient_number} created successfully.`);
       navigate(`/patients/${patient.id}`);
     },
-    onError: (err) => handleMutationError(err, "Unable to save patient information. Please check the highlighted fields and try again.", (fieldErrors) => {
+    onError: (err) => handleMutationError(err, "Unable to save patient information. Please try again.", (fieldErrors) => {
       Object.entries(fieldErrors).forEach(([k, v]) => {
         const field = k as keyof PatientForm;
         if (field in form.getValues()) {
           form.setError(field, { message: v });
         }
       });
-      if (!Object.keys(fieldErrors).some((k) => k in form.getValues())) {
-        error("Unable to save patient information. Please check the highlighted fields and try again.");
-      }
     }),
   });
 
