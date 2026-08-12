@@ -35,14 +35,14 @@ class StaffViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def perform_create(self, serializer):
-        data = serializer.validated_data
+        data = dict(serializer.validated_data)
         role = Role.objects.filter(code=data.pop("role")).first()
         user = User.objects.create(
             username=data.pop("username"),
             email=data.pop("email"),
             first_name=data.pop("first_name"),
             last_name=data.pop("last_name"),
-            phone=data.get("phone", ""),
+            phone=data.pop("phone", ""),
             role=role,
             department=data.pop("department", None),
         )

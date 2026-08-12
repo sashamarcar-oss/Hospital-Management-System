@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, getErrorMessage } from "@/lib/api";
-import type { Admission, Paginated, Ward, Room, Bed, Department } from "@/lib/types";
+import type { Admission, Paginated, Staff, Ward, Room, Bed, Department } from "@/lib/types";
 import { PageHeader } from "@/components/common/page-header";
 import { PatientSelect } from "@/components/common/patient-select";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -171,7 +171,8 @@ function AdmitForm({ onDone }: { onDone: () => void }) {
   const [diagnosis, setDiagnosis] = useState("");
   const [notes, setNotes] = useState("");
 
-  const staff = useOptions<{ id: number; name: string; user: number }>("/staff/");
+  const staff = useOptions<Staff>("/staff/");
+  const doctors = staff.filter((s) => s.user_details?.role_code === "doctor");
   const departments = useOptions<Department>("/departments/");
   const wards = useOptions<Ward>("/admissions/wards/");
   const rooms = useOptions<Room>("/admissions/rooms/", ward ? { ward: Number(ward) } : {});
@@ -211,9 +212,15 @@ function AdmitForm({ onDone }: { onDone: () => void }) {
           <Select value={doctor} onValueChange={setDoctor}>
             <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
             <SelectContent>
-              {staff.map((s) => (
-                <SelectItem key={s.id} value={String(s.user)}>{s.name}</SelectItem>
+              {doctors.map((s) => (
+                <SelectItem key={s.id} value={String(s.user)}>
+                  {userFullName(s.user_details)}
+                  {s.job_title ? ` (${s.job_title})` : ""}
+                </SelectItem>
               ))}
+              {doctors.length === 0 && (
+                <SelectItem value="__none__" disabled>No doctors found</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>

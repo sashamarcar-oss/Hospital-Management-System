@@ -28,14 +28,20 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { MOVEMENT_TYPE_LABELS } from "@/lib/constants";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  INVENTORY_CATEGORIES,
+  INVENTORY_CATEGORY_LABELS,
+  MOVEMENT_TYPE_LABELS,
+} from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 export function InventoryPage() {
+  const { can } = useAuth();
   return (
     <div className="space-y-6">
       <PageHeader title="Inventory" description="Stock levels, adjustments and movement history.">
-        <NewItemDialog />
+        {can("inventory.create") && <NewItemDialog />}
       </PageHeader>
       <Tabs defaultValue="items">
         <TabsList>
@@ -134,6 +140,7 @@ function ItemsTab() {
 
 function AdjustStockDialog({ item, onDone }: { item: InventoryItem; onDone: () => void }) {
   const { success, error } = useToast();
+  const { can } = useAuth();
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
 
@@ -153,7 +160,9 @@ function AdjustStockDialog({ item, onDone }: { item: InventoryItem; onDone: () =
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Adjust</Button>
+        {can("inventory.update") ? (
+          <Button variant="outline" size="sm">Adjust</Button>
+        ) : null}
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -252,7 +261,14 @@ function NewItemDialog() {
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectContent>
+                  {INVENTORY_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>{INVENTORY_CATEGORY_LABELS[c]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Unit</Label>

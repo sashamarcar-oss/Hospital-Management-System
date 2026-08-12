@@ -170,14 +170,18 @@ export function ConsultationNewPage() {
 
   const mutation = useMutation({
     mutationFn: async (values: ConsultationForm) => {
+      const vitals = values.vitals ?? {};
+      const vitalsPresent = Object.values(vitals).some(
+        (v) => v !== null && v !== "" && v !== undefined
+      );
       const consultation = await api
         .post<Consultation>("/consultations/", {
           ...values,
           doctor: user?.id,
-          vital_signs: values.vitals
+          vital_signs: vitalsPresent
             ? [
                 Object.fromEntries(
-                  Object.entries(values.vitals).filter(([, v]) => v !== null && v !== "" && v !== undefined)
+                  Object.entries(vitals).filter(([, v]) => v !== null && v !== "" && v !== undefined)
                 ),
               ]
             : [],

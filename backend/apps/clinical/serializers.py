@@ -19,6 +19,19 @@ class DiagnosisSerializer(serializers.ModelSerializer):
         fields = ["id", "consultation", "icd_code", "name", "description", "is_primary"]
 
 
+class NestedDiagnosisSerializer(serializers.ModelSerializer):
+    """Writable diagnoses embedded in a consultation.
+
+    ``consultation``/``patient`` are omitted here because the parent
+    ConsultationSerializer resolves and assigns them when creating.
+    """
+
+    class Meta:
+        model = Diagnosis
+        fields = ["id", "icd_code", "name", "description", "is_primary"]
+        read_only_fields = ["id"]
+
+
 class VitalSignsSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.CharField(source="recorded_by.get_full_name", read_only=True)
 
@@ -31,6 +44,28 @@ class VitalSignsSerializer(serializers.ModelSerializer):
             "recorded_at",
         ]
         read_only_fields = ["bmi", "recorded_by", "recorded_at"]
+
+    def validate(self, attrs):
+        if attrs.get("pain_score") is not None and not (0 <= attrs["pain_score"] <= 10):
+            raise serializers.ValidationError({"pain_score": "Pain score must be between 0 and 10."})
+        return attrs
+
+
+class NestedVitalSignsSerializer(serializers.ModelSerializer):
+    """Writable vital signs embedded in a consultation.
+
+    ``patient``/``consultation``/``recorded_by`` are omitted here because the
+    parent ConsultationSerializer resolves and assigns them when creating.
+    """
+
+    class Meta:
+        model = VitalSigns
+        fields = [
+            "id", "temperature", "blood_pressure_systolic", "blood_pressure_diastolic",
+            "pulse", "respiratory_rate", "oxygen_saturation", "weight", "height",
+            "pain_score", "notes",
+        ]
+        read_only_fields = ["id"]
 
     def validate(self, attrs):
         if attrs.get("pain_score") is not None and not (0 <= attrs["pain_score"] <= 10):
@@ -96,8 +131,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 class ConsultationSerializer(serializers.ModelSerializer):
     patient_details = PatientSummarySerializer(source="patient", read_only=True)
     doctor_details = UserBriefSerializer(source="doctor", read_only=True)
-    diagnoses = DiagnosisSerializer(many=True, required=False)
-    vital_signs = VitalSignsSerializer(many=True, required=False)
+    diagnoses = NestedDiagnosisSerializer(many=True, required=False)
+    vital_signs = NestedVitalSignsSerializer(many=True, required=False)
     prescriptions = PrescriptionSerializer(many=True, read_only=True)
 
     class Meta:

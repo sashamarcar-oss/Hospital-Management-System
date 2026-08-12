@@ -101,6 +101,7 @@ function VisitRow({ visit, onDone }: { visit: EmergencyVisit; onDone: () => void
     queryFn: () =>
       api.get<Paginated<Staff>>("/staff/", { params: { page_size: 200 } }).then((r) => r.data),
   });
+  const doctors = (staff?.results ?? []).filter((s) => s.user_details?.role_code === "doctor");
 
   const mutation = useMutation({
     mutationFn: ({ action, payload }: { action: string; payload?: Record<string, unknown> }) =>
@@ -161,11 +162,14 @@ function VisitRow({ visit, onDone }: { visit: EmergencyVisit; onDone: () => void
               <Select value={doctor} onValueChange={setDoctor}>
                 <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
                 <SelectContent>
-                  {(staff?.results ?? []).map((s) => (
+                  {doctors.map((s) => (
                     <SelectItem key={s.id} value={String(s.user)}>
-                      {userFullName(s.user_details)} ({s.job_title || "staff"})
+                      {userFullName(s.user_details)} ({s.job_title || "doctor"})
                     </SelectItem>
                   ))}
+                  {doctors.length === 0 && (
+                    <SelectItem value="__none__" disabled>No doctors found</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

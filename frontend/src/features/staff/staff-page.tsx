@@ -168,7 +168,7 @@ function NewStaffDialog() {
           <UserPlus /> Add staff
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add staff member</DialogTitle>
           <DialogDescription>Creates a user account plus staff profile.</DialogDescription>
