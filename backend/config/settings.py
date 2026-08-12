@@ -352,6 +352,7 @@ CORS_ALLOWED_ORIGINS = env.list(
         # Vercel deployments
         "https://hospital-management-system-k6a7-git-main-caren-m-s-projects.vercel.app",
         "https://hospital-management-system-anuh5f08h-caren-m-s-projects.vercel.app",
+        "https://hospital-management-system-k6a7-7xtfddvqt-caren-m-s-projects.vercel.app",
     ],
 )
 
@@ -371,6 +372,7 @@ CSRF_TRUSTED_ORIGINS = env.list(
         # Vercel
         "https://hospital-management-system-k6a7-git-main-caren-m-s-projects.vercel.app",
         "https://hospital-management-system-anuh5f08h-caren-m-s-projects.vercel.app",
+        "https://hospital-management-system-k6a7-7xtfddvqt-caren-m-s-projects.vercel.app",
     ],
 )
 
