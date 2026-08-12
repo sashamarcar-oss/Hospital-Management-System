@@ -173,12 +173,16 @@ class Referral(BaseModel):
     STATUS_ACCEPTED = "accepted"
     STATUS_COMPLETED = "completed"
     STATUS_REJECTED = "rejected"
+    STATUS_IN_PROGRESS = "in_progress"
+    STATUS_CANCELLED = "cancelled"
 
     STATUS_CHOICES = [
         (STATUS_PENDING, "Pending"),
         (STATUS_ACCEPTED, "Accepted"),
         (STATUS_COMPLETED, "Completed"),
         (STATUS_REJECTED, "Rejected"),
+        (STATUS_IN_PROGRESS, "In Progress"),
+        (STATUS_CANCELLED, "Cancelled"),
     ]
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="referrals")
@@ -191,8 +195,16 @@ class Referral(BaseModel):
     to_department = models.ForeignKey(
         "departments.Department", null=True, blank=True, on_delete=models.SET_NULL, related_name="referrals"
     )
+    consultation = models.ForeignKey(Consultation, null=True, blank=True, on_delete=models.SET_NULL, related_name="referrals")
+    diagnosis = models.ForeignKey(Diagnosis, null=True, blank=True, on_delete=models.SET_NULL, related_name="referrals")
+    specialty = models.CharField(max_length=120, blank=True)
+    urgency = models.CharField(max_length=16, choices=[("routine", "Routine"), ("urgent", "Urgent"), ("emergency", "Emergency")], default="routine")
+    referral_date = models.DateField(default=timezone.localdate)
+    appointment_at = models.DateTimeField(null=True, blank=True)
     reason = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    response_notes = models.TextField(blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.accounts.serializers import UserBriefSerializer
-from apps.inpatient.models import Admission, Bed, Discharge, NursingNote, Room, Ward
+from apps.inpatient.models import Admission, Bed, Discharge, NursingNote, NursingHandover, ICUMonitoringRecord, Room, Ward
 from apps.patients.serializers import PatientSummarySerializer
 
 
@@ -60,8 +60,8 @@ class AdmissionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         bed = attrs.get("bed")
-        if bed and bed.status == Bed.STATUS_MAINTENANCE:
-            raise serializers.ValidationError({"bed": "Cannot assign a bed under maintenance."})
+        if bed and bed.status != Bed.STATUS_AVAILABLE:
+            raise serializers.ValidationError({"bed": "Only an available bed can be assigned."})
         return attrs
 
 
@@ -70,8 +70,22 @@ class NursingNoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NursingNote
-        fields = ["id", "admission", "nurse", "nurse_name", "note", "shift", "recorded_at"]
+        fields = ["id", "admission", "nurse", "nurse_name", "note", "shift", "observations", "interventions", "patient_response", "medication_observations", "condition", "pending_tasks", "recorded_at"]
         read_only_fields = ["nurse", "recorded_at"]
+
+class NursingHandoverSerializer(serializers.ModelSerializer):
+    nurse_name = serializers.CharField(source="nurse.get_full_name", read_only=True)
+    class Meta:
+        model = NursingHandover
+        fields = "__all__"
+        read_only_fields = ["nurse", "created_by", "updated_by"]
+
+class ICUMonitoringRecordSerializer(serializers.ModelSerializer):
+    nurse_name = serializers.CharField(source="nurse.get_full_name", read_only=True)
+    class Meta:
+        model = ICUMonitoringRecord
+        fields = "__all__"
+        read_only_fields = ["nurse", "created_by", "updated_by"]
 
 
 class DischargeSerializer(serializers.ModelSerializer):

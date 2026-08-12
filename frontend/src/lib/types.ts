@@ -508,6 +508,8 @@ export interface Payment {
   received_by_name: string;
   paid_at: string;
   notes: string;
+  insurance_provider: string; policy_number: string; member_name: string; authorization_number: string;
+  insurance_amount: string; patient_copay: string; mpesa_phone: string; mpesa_transaction_code: string;
 }
 
 export interface Invoice {
@@ -523,6 +525,8 @@ export interface Invoice {
   total: string;
   amount_paid: string;
   balance: string;
+  insurance_covered_amount: string;
+  patient_copay_amount: string;
   due_date: string | null;
   insurance_claim: number | null;
   notes: string;
@@ -666,6 +670,15 @@ export interface Shift {
   end_time: string;
   description: string;
 }
+
+export interface NurseShift {
+  id: number; nurse: number; nurse_details: UserBrief; department: number | null; department_name: string;
+  shift_date: string; start_time: string; end_time: string; shift_type: string; location: string;
+  notes: string; status: string; effective_status: string;
+}
+
+export interface Message { id: number; conversation: number; sender: number; sender_details: UserBrief; content: string; created_at: string; is_read: boolean; is_deleted: boolean; }
+export interface Conversation { id: number; participants: number[]; participants_details: UserBrief[]; created_at: string; updated_at: string; last_message: Message | null; unread_count: number; }
 
 export interface Attendance {
   id: number;

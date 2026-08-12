@@ -178,7 +178,20 @@ class ReferralSerializer(serializers.ModelSerializer):
     from_doctor_name = serializers.CharField(source="from_doctor.get_full_name", read_only=True)
     to_doctor_name = serializers.CharField(source="to_doctor.get_full_name", read_only=True)
     department_name = serializers.CharField(source="to_department.name", read_only=True)
+    diagnosis_name = serializers.CharField(source="diagnosis.name", read_only=True)
 
     class Meta:
         model = Referral
         fields = "__all__"
+        read_only_fields = ["from_doctor", "created_by", "updated_by", "completed_at"]
+
+    def validate(self, attrs):
+        request = self.context["request"]
+        doctor = attrs.get("to_doctor", getattr(self.instance, "to_doctor", None))
+        if doctor and not doctor.in_roles("doctor"):
+            raise serializers.ValidationError({"to_doctor": "The receiving user must be a doctor."})
+        consultation = attrs.get("consultation", getattr(self.instance, "consultation", None))
+        diagnosis = attrs.get("diagnosis", getattr(self.instance, "diagnosis", None))
+        if diagnosis and consultation and diagnosis.consultation_id != consultation.id:
+            raise serializers.ValidationError({"diagnosis": "Diagnosis must belong to the selected consultation."})
+        return attrs

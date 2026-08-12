@@ -167,6 +167,8 @@ export function InvoiceDetailPage() {
                 <span className="text-muted-foreground">Paid</span>
                 <span>{formatCurrency(invoice.amount_paid)}</span>
               </div>
+              {Number(invoice.insurance_covered_amount) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Insurance covered</span><span>{formatCurrency(invoice.insurance_covered_amount)}</span></div>}
+              {Number(invoice.patient_copay_amount) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Patient co-pay</span><span>{formatCurrency(invoice.patient_copay_amount)}</span></div>}
               <div className="flex justify-between font-medium">
                 <span>Balance</span>
                 <span>{formatCurrency(invoice.balance)}</span>
@@ -194,6 +196,14 @@ function AddPaymentDialog({ invoice }: { invoice: Invoice }) {
   const [method, setMethod] = useState("cash");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [insuranceProvider, setInsuranceProvider] = useState("");
+  const [policyNumber, setPolicyNumber] = useState("");
+  const [memberName, setMemberName] = useState("");
+  const [authorizationNumber, setAuthorizationNumber] = useState("");
+  const [insuranceAmount, setInsuranceAmount] = useState(String(invoice.balance));
+  const [patientCopay, setPatientCopay] = useState("0");
+  const [mpesaPhone, setMpesaPhone] = useState("");
+  const [mpesaCode, setMpesaCode] = useState("");
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -203,6 +213,14 @@ function AddPaymentDialog({ invoice }: { invoice: Invoice }) {
         method,
         reference,
         notes,
+        insurance_provider: insuranceProvider,
+        policy_number: policyNumber,
+        member_name: memberName,
+        authorization_number: authorizationNumber,
+        insurance_amount: method === "insurance" ? Number(insuranceAmount) : 0,
+        patient_copay: method === "insurance" ? Number(patientCopay) : 0,
+        mpesa_phone: mpesaPhone,
+        mpesa_transaction_code: mpesaCode,
       }),
     onSuccess: () => {
       success("Payment recorded");
@@ -242,9 +260,11 @@ function AddPaymentDialog({ invoice }: { invoice: Invoice }) {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Reference</Label>
-            <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Optional" />
+            <Label>{method === "mpesa" ? "Transaction/reference code" : "Reference"}</Label>
+            <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder={method === "mpesa" ? "e.g. QWE123ABC" : "Optional"} />
           </div>
+          {method === "insurance" && <div className="space-y-3 rounded-lg border bg-muted/30 p-3"><p className="text-sm font-medium">Insurance details</p><div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label>Provider</Label><Input value={insuranceProvider} onChange={(e) => setInsuranceProvider(e.target.value)} placeholder="SHA / insurer" /></div><div className="space-y-1"><Label>Policy number</Label><Input value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} /></div><div className="space-y-1"><Label>Insurance amount</Label><Input type="number" min={0} value={insuranceAmount} onChange={(e) => setInsuranceAmount(e.target.value)} /></div><div className="space-y-1"><Label>Patient co-pay</Label><Input type="number" min={0} value={patientCopay} onChange={(e) => setPatientCopay(e.target.value)} /></div></div><div className="space-y-1"><Label>Member name</Label><Input value={memberName} onChange={(e) => setMemberName(e.target.value)} /></div><div className="space-y-1"><Label>Authorization number</Label><Input value={authorizationNumber} onChange={(e) => setAuthorizationNumber(e.target.value)} /></div></div>}
+          {method === "mpesa" && <div className="space-y-3 rounded-lg border bg-muted/30 p-3"><p className="text-sm font-medium">M-Pesa details</p><div className="space-y-1"><Label>Phone number</Label><Input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="07XXXXXXXX" /></div><div className="space-y-1"><Label>Transaction code</Label><Input value={mpesaCode} onChange={(e) => { setMpesaCode(e.target.value); setReference(e.target.value); }} placeholder="e.g. QWE123ABC" /></div></div>}
           <div className="space-y-2">
             <Label>Notes</Label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />

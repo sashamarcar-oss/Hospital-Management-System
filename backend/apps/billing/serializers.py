@@ -29,8 +29,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Payment
-        fields = ["id", "invoice", "amount", "method", "status", "reference",
-                  "receipt_number", "received_by", "received_by_name", "paid_at", "notes"]
+        fields = ["id", "invoice", "amount", "method", "status", "reference", "receipt_number", "received_by", "received_by_name", "paid_at", "notes", "insurance_provider", "policy_number", "member_name", "authorization_number", "insurance_amount", "patient_copay", "mpesa_phone", "mpesa_transaction_code"]
         read_only_fields = ["receipt_number", "received_by", "paid_at"]
 
     def validate(self, attrs):
@@ -42,11 +41,24 @@ class PaymentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"amount": f"Amount exceeds the invoice balance of {invoice.balance}."}
             )
+        method = attrs.get("method", getattr(self.instance, "method", None))
+        if method == Payment.METHOD_INSURANCE:
+            if not attrs.get("insurance_provider", getattr(self.instance, "insurance_provider", "")):
+                raise serializers.ValidationError({"insurance_provider": "Insurance provider is required."})
+            if attrs.get("insurance_amount", 0) + attrs.get("patient_copay", 0) not in (0, amount):
+                raise serializers.ValidationError({"insurance_amount": "Insurance amount plus patient co-pay must equal the payment amount."})
+        if method == Payment.METHOD_MPESA and not (attrs.get("mpesa_phone", getattr(self.instance, "mpesa_phone", "")) and attrs.get("mpesa_transaction_code", getattr(self.instance, "mpesa_transaction_code", ""))):
+            raise serializers.ValidationError({"mpesa_transaction_code": "M-Pesa phone number and transaction code are required."})
         return attrs
 
     def create(self, validated_data):
         payment = Payment.objects.create(**validated_data, received_by=self.context["request"].user)
         payment.invoice.recalculate()
+        if payment.method == Payment.METHOD_INSURANCE:
+            invoice = payment.invoice
+            invoice.insurance_covered_amount += payment.insurance_amount
+            invoice.patient_copay_amount += payment.patient_copay
+            invoice.save(update_fields=["insurance_covered_amount", "patient_copay_amount"])
         return payment
 
 
@@ -60,13 +72,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             "id", "patient", "patient_details", "invoice_number", "status", "subtotal",
-            "discount", "tax_rate", "tax", "total", "amount_paid", "balance", "due_date",
+            "discount", "tax_rate", "tax", "total", "amount_paid", "balance", "insurance_covered_amount", "patient_copay_amount", "due_date",
             "insurance_claim", "notes", "issued_by", "issued_by_name", "issued_at",
             "items", "payments",
         ]
         read_only_fields = [
             "invoice_number", "status", "subtotal", "tax", "total", "amount_paid",
-            "balance", "issued_at",
+            "balance", "issued_at", "insurance_covered_amount", "patient_copay_amount",
         ]
 
     def validate_discount(self, value):

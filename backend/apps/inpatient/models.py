@@ -72,12 +72,16 @@ class Bed(BaseModel):
     STATUS_OCCUPIED = "occupied"
     STATUS_RESERVED = "reserved"
     STATUS_MAINTENANCE = "maintenance"
+    STATUS_CLEANING = "cleaning"
+    STATUS_OUT_OF_SERVICE = "out_of_service"
 
     STATUS_CHOICES = [
         (STATUS_AVAILABLE, "Available"),
         (STATUS_OCCUPIED, "Occupied"),
         (STATUS_RESERVED, "Reserved"),
         (STATUS_MAINTENANCE, "Maintenance"),
+        (STATUS_CLEANING, "Cleaning"),
+        (STATUS_OUT_OF_SERVICE, "Out of Service"),
     ]
 
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="beds")
@@ -146,6 +150,17 @@ class Admission(BaseModel):
                 Bed.objects.filter(pk=self.bed_id).update(status=Bed.STATUS_AVAILABLE)
 
 
+class BedAssignment(models.Model):
+    """Immutable history of an admission's use of a bed."""
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name="bed_assignments")
+    bed = models.ForeignKey(Bed, on_delete=models.PROTECT, related_name="assignment_history")
+    assigned_at = models.DateTimeField(default=timezone.now)
+    released_at = models.DateTimeField(null=True, blank=True)
+    assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    release_reason = models.TextField(blank=True)
+    class Meta: ordering = ["-assigned_at"]
+
+
 class Discharge(BaseModel):
     admission = models.OneToOneField(
         Admission, on_delete=models.CASCADE, related_name="discharge"
@@ -178,6 +193,12 @@ class NursingNote(BaseModel):
     )
     note = models.TextField()
     shift = models.CharField(max_length=32, blank=True)
+    observations = models.TextField(blank=True)
+    interventions = models.TextField(blank=True)
+    patient_response = models.TextField(blank=True)
+    medication_observations = models.TextField(blank=True)
+    condition = models.CharField(max_length=16, choices=[("stable", "Stable"), ("improving", "Improving"), ("deteriorating", "Deteriorating"), ("critical", "Critical")], default="stable")
+    pending_tasks = models.TextField(blank=True)
     recorded_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -185,3 +206,38 @@ class NursingNote(BaseModel):
 
     def __str__(self):
         return f"Nursing note {self.recorded_at:%Y-%m-%d %H:%M}"
+
+
+class NursingHandover(BaseModel):
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name="handovers")
+    nurse = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    shift = models.CharField(max_length=32, blank=True)
+    condition = models.CharField(max_length=16, choices=NursingNote._meta.get_field("condition").choices, default="stable")
+    observations = models.TextField(blank=True)
+    medication_due = models.TextField(blank=True)
+    pending_investigations = models.TextField(blank=True)
+    pending_tasks = models.TextField(blank=True)
+    precautions = models.TextField(blank=True)
+    recorded_at = models.DateTimeField(default=timezone.now)
+    class Meta: ordering = ["-recorded_at"]
+
+
+class ICUMonitoringRecord(BaseModel):
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name="icu_records")
+    nurse = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_at = models.DateTimeField(default=timezone.now)
+    frequency = models.CharField(max_length=16, choices=[("hourly", "Hourly"), ("2_hourly", "2-hourly"), ("4_hourly", "4-hourly"), ("custom", "Custom")], default="hourly")
+    temperature = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    heart_rate = models.PositiveSmallIntegerField(null=True, blank=True)
+    blood_pressure = models.CharField(max_length=24, blank=True)
+    respiratory_rate = models.PositiveSmallIntegerField(null=True, blank=True)
+    oxygen_saturation = models.PositiveSmallIntegerField(null=True, blank=True)
+    consciousness = models.CharField(max_length=120, blank=True)
+    pain_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    fluid_intake_ml = models.PositiveIntegerField(null=True, blank=True)
+    fluid_output_ml = models.PositiveIntegerField(null=True, blank=True)
+    urine_output_ml = models.PositiveIntegerField(null=True, blank=True)
+    respiratory_support = models.TextField(blank=True)
+    infusions = models.TextField(blank=True)
+    observations = models.TextField(blank=True)
+    class Meta: ordering = ["-recorded_at"]

@@ -35,6 +35,9 @@ class Invoice(BaseModel):
     STATUS_PAID = "paid"
     STATUS_OVERDUE = "overdue"
     STATUS_CANCELLED = "cancelled"
+    STATUS_INSURANCE_PENDING = "insurance_pending"
+    STATUS_INSURANCE_APPROVED = "insurance_approved"
+    STATUS_INSURANCE_REJECTED = "insurance_rejected"
 
     STATUS_CHOICES = [
         (STATUS_UNPAID, "Unpaid"),
@@ -42,11 +45,14 @@ class Invoice(BaseModel):
         (STATUS_PAID, "Paid"),
         (STATUS_OVERDUE, "Overdue"),
         (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_INSURANCE_PENDING, "Insurance Pending"),
+        (STATUS_INSURANCE_APPROVED, "Insurance Approved"),
+        (STATUS_INSURANCE_REJECTED, "Insurance Rejected"),
     ]
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="invoices")
     invoice_number = models.CharField(max_length=32, unique=True, editable=False)
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_UNPAID)
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, default=STATUS_UNPAID)
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     discount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -54,6 +60,8 @@ class Invoice(BaseModel):
     total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     amount_paid = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    insurance_covered_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    patient_copay_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     due_date = models.DateField(null=True, blank=True)
     insurance_claim = models.ForeignKey(
         "insurance.InsuranceClaim", null=True, blank=True, on_delete=models.SET_NULL,
@@ -174,6 +182,7 @@ class Payment(BaseModel):
     METHOD_CARD = "card"
     METHOD_BANK = "bank"
     METHOD_MOBILE = "mobile_money"
+    METHOD_MPESA = "mpesa"
     METHOD_INSURANCE = "insurance"
 
     METHOD_CHOICES = [
@@ -181,6 +190,7 @@ class Payment(BaseModel):
         (METHOD_CARD, "Card"),
         (METHOD_BANK, "Bank Transfer"),
         (METHOD_MOBILE, "Mobile Money"),
+        (METHOD_MPESA, "M-Pesa"),
         (METHOD_INSURANCE, "Insurance"),
     ]
 
@@ -207,6 +217,14 @@ class Payment(BaseModel):
     )
     paid_at = models.DateTimeField(default=timezone.now)
     notes = models.TextField(blank=True)
+    insurance_provider = models.CharField(max_length=120, blank=True)
+    policy_number = models.CharField(max_length=80, blank=True)
+    member_name = models.CharField(max_length=120, blank=True)
+    authorization_number = models.CharField(max_length=80, blank=True)
+    insurance_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    patient_copay = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    mpesa_phone = models.CharField(max_length=20, blank=True)
+    mpesa_transaction_code = models.CharField(max_length=64, blank=True)
 
     class Meta:
         ordering = ["-paid_at"]

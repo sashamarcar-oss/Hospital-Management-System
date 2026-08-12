@@ -17,6 +17,8 @@ urlpatterns = [
     path("api/users/", include("apps.accounts.user_urls")),
     path("api/departments/", include("apps.departments.urls")),
     path("api/staff/", include("apps.staff.urls")),
+    path("api/shifts/", include("apps.scheduling.urls")),
+    path("api/messages/", include("apps.messaging.urls")),
     path("api/patients/", include("apps.patients.urls")),
     path("api/appointments/", include("apps.appointments.urls")),
     path("api/consultations/", include("apps.clinical.urls")),

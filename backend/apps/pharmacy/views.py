@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import transaction, models
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -107,8 +107,10 @@ class MedicineViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def expiring(self, request):
-        soon = timezone.now().date()
-        qs = MedicineBatch.objects.filter(expiry_date__lte=soon.replace(year=soon.year + 1)).select_related("medicine")
+        from datetime import timedelta
+        days = int(request.query_params.get("days", 90))
+        today = timezone.now().date()
+        qs = MedicineBatch.objects.filter(expiry_date__gte=today, expiry_date__lte=today + timedelta(days=days)).select_related("medicine")
         return Response(MedicineBatchSerializer(qs, many=True).data)
 
     @action(detail=False, methods=["get"])
@@ -172,8 +174,9 @@ class DispenseView(viewsets.ViewSet):
         return Response(PrescriptionSerializer(prescription).data)
 
     def _deduct_medicine(self, medicine, quantity, user, reference):
+        today = timezone.now().date()
         remaining = quantity
-        batches = medicine.batches.exclude(quantity=0).order_by("expiry_date", "id")
+        batches = medicine.batches.exclude(quantity=0).filter(models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gte=today)).order_by("expiry_date", "id")
         for batch in batches:
             if remaining <= 0:
                 break
@@ -192,7 +195,7 @@ class DispenseView(viewsets.ViewSet):
             )
         if remaining > 0:
             from rest_framework import exceptions
-
+            audit_log(user, AuditLog.ACTION_OTHER, "pharmacy.expiry", record=medicine.name, description="dispensing blocked: no valid non-expired stock")
             raise exceptions.ValidationError(f"Insufficient stock for {medicine.name}.")
 
     def _create_billing_charge(self, prescription):

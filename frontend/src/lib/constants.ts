@@ -231,12 +231,10 @@ export const INVOICE_STATUS_VARIANTS: Record<string, "neutral" | "warning" | "su
   cancelled: "destructive",
 };
 
-export const PAYMENT_METHODS = ["cash", "card", "bank", "mobile_money", "insurance"] as const;
+export const PAYMENT_METHODS = ["cash", "insurance", "mpesa"] as const;
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: "Cash",
-  card: "Card",
-  bank: "Bank Transfer",
-  mobile_money: "Mobile Money",
+  mpesa: "M-Pesa",
   insurance: "Insurance",
 };
 

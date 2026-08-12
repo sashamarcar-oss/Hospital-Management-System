@@ -8,12 +8,14 @@ from rest_framework.response import Response
 from apps.accounts.permissions import HasPermission
 from apps.core.models import AuditLog
 from apps.core.services import audit_log, notify
-from apps.inpatient.models import Admission, Bed, Discharge, NursingNote, Room, Ward
+from apps.inpatient.models import Admission, Bed, BedAssignment, Discharge, NursingNote, NursingHandover, ICUMonitoringRecord, Room, Ward
 from apps.inpatient.serializers import (
     AdmissionSerializer,
     BedSerializer,
     DischargeSerializer,
     NursingNoteSerializer,
+    NursingHandoverSerializer,
+    ICUMonitoringRecordSerializer,
     RoomSerializer,
     WardSerializer,
 )
@@ -96,6 +98,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         if admission.bed:
             admission.bed.status = Bed.STATUS_OCCUPIED
             admission.bed.save(update_fields=["status"])
+            BedAssignment.objects.create(admission=admission, bed=admission.bed, assigned_by=self.request.user)
         audit_log(self.request.user, AuditLog.ACTION_CREATE, "inpatient.admission",
                   record=str(admission.patient), object_id=admission.id,
                   request=self.request, new_value=serializer.data)
@@ -117,6 +120,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         old_bed = admission.bed
         if old_bed:
             Bed.objects.filter(pk=old_bed.id).update(status=Bed.STATUS_AVAILABLE)
+            BedAssignment.objects.filter(admission=admission, bed=old_bed, released_at__isnull=True).update(released_at=timezone.now(), release_reason=request.data.get("reason", "Transfer"))
         new_bed_obj = Bed.objects.select_for_update().get(pk=new_bed)
         if new_bed_obj.status == Bed.STATUS_OCCUPIED:
             return Response({"detail": "The target bed is already occupied."}, status=400)
@@ -127,6 +131,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         admission.save()
         new_bed_obj.status = Bed.STATUS_OCCUPIED
         new_bed_obj.save(update_fields=["status"])
+        BedAssignment.objects.create(admission=admission, bed=new_bed_obj, assigned_by=request.user)
         audit_log(request.user, AuditLog.ACTION_UPDATE, "inpatient.admission",
                   record=str(admission.patient), object_id=admission.id, request=request,
                   description=f"transferred to bed {new_bed_obj.bed_number}")
@@ -145,6 +150,32 @@ class NursingNoteViewSet(viewsets.ModelViewSet):
         note = serializer.save(nurse=self.request.user, created_by=self.request.user)
         audit_log(self.request.user, AuditLog.ACTION_CREATE, "inpatient.nursingnote",
                   record=str(note.admission), object_id=note.id, request=self.request)
+
+    def update(self, request, *args, **kwargs):
+        return Response({"detail": "Historical nursing notes cannot be edited."}, status=403)
+
+    partial_update = update
+
+class NursingHandoverViewSet(viewsets.ModelViewSet):
+    queryset = NursingHandover.objects.select_related("admission", "nurse").all()
+    serializer_class = NursingHandoverSerializer
+    permission_classes = [HasPermission]
+    code = "vitals.create"
+    filterset_fields = ["admission", "shift", "condition"]
+    def perform_create(self, serializer):
+        handover = serializer.save(nurse=self.request.user, created_by=self.request.user)
+        audit_log(self.request.user, AuditLog.ACTION_CREATE, "inpatient.handover", record=str(handover.admission), object_id=handover.id, request=self.request)
+
+class ICUMonitoringRecordViewSet(viewsets.ModelViewSet):
+    queryset = ICUMonitoringRecord.objects.select_related("admission__ward", "nurse").all()
+    serializer_class = ICUMonitoringRecordSerializer
+    permission_classes = [HasPermission]
+    code = "vitals.create"
+    filterset_fields = ["admission", "frequency"]
+    def get_queryset(self): return super().get_queryset().filter(admission__ward__ward_type=Ward.TYPE_ICU)
+    def perform_create(self, serializer):
+        record = serializer.save(nurse=self.request.user, created_by=self.request.user)
+        audit_log(self.request.user, AuditLog.ACTION_CREATE, "inpatient.icu", record=str(record.admission), object_id=record.id, request=self.request)
 
 
 class DischargeViewSet(viewsets.ModelViewSet):
@@ -184,6 +215,7 @@ class DischargeViewSet(viewsets.ModelViewSet):
         admission.save()
         if admission.bed:
             Bed.objects.filter(pk=admission.bed_id).update(status=Bed.STATUS_AVAILABLE)
+            BedAssignment.objects.filter(admission=admission, bed=admission.bed, released_at__isnull=True).update(released_at=timezone.now(), release_reason="Discharged")
 
         audit_log(request.user, AuditLog.ACTION_CREATE, "inpatient.discharge",
                   record=str(admission.patient), object_id=discharge.id,

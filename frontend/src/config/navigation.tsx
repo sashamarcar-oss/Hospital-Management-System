@@ -22,6 +22,8 @@ import {
   Settings,
   ScrollText,
   FileText,
+  MessageSquare,
+  CalendarClock,
 } from "lucide-react";
 
 export interface NavItem {
@@ -84,6 +86,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Administration",
     items: [
+      { label: "Shift Management", to: "/shifts", icon: CalendarClock, anyPermission: ["staff.view", "dashboard.view"] },
+      { label: "Messages", to: "/messages", icon: MessageSquare },
       { label: "Staff", to: "/staff", icon: UserRound, permission: "staff.view" },
       { label: "Departments", to: "/departments", icon: Building2, permission: "departments.view" },
       { label: "Reports", to: "/reports", icon: BarChart3, permission: "reports.view" },

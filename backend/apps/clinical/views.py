@@ -20,7 +20,7 @@ from apps.clinical.serializers import (
     VitalSignsSerializer,
 )
 from apps.core.models import AuditLog
-from apps.core.services import audit_log
+from apps.core.services import audit_log, notify
 
 
 class ConsultationViewSet(viewsets.ModelViewSet):
@@ -228,6 +228,51 @@ class ReferralViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at"]
 
     def perform_create(self, serializer):
-        referral = serializer.save(created_by=self.request.user)
+        referral = serializer.save(from_doctor=self.request.user, created_by=self.request.user)
         audit_log(self.request.user, AuditLog.ACTION_CREATE, "clinical.referral",
                   record=str(referral.patient), object_id=referral.id, request=self.request)
+        if referral.to_doctor:
+            notify(referral.to_doctor, "New patient referral", f"{referral.patient} has been referred to you.", link="/referrals")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.in_roles("doctor"):
+            return qs.filter(from_doctor=self.request.user) | qs.filter(to_doctor=self.request.user)
+        return qs
+
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        referral = self.get_object()
+        if referral.to_doctor_id != request.user.id:
+            return Response({"detail": "Only the receiving doctor can accept this referral."}, status=403)
+        referral.status = Referral.STATUS_ACCEPTED
+        referral.response_notes = request.data.get("notes", referral.response_notes)
+        referral.updated_by = request.user
+        referral.save()
+        audit_log(request.user, AuditLog.ACTION_UPDATE, "clinical.referral", record=str(referral.patient), object_id=referral.id, request=request, description="referral accepted")
+        return Response(ReferralSerializer(referral, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        referral = self.get_object()
+        if referral.to_doctor_id != request.user.id:
+            return Response({"detail": "Only the receiving doctor can reject this referral."}, status=403)
+        referral.status = Referral.STATUS_REJECTED
+        referral.response_notes = request.data.get("reason", "")
+        referral.updated_by = request.user
+        referral.save()
+        audit_log(request.user, AuditLog.ACTION_UPDATE, "clinical.referral", record=str(referral.patient), object_id=referral.id, request=request, description="referral rejected")
+        return Response(ReferralSerializer(referral, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"])
+    def complete(self, request, pk=None):
+        referral = self.get_object()
+        if referral.to_doctor_id != request.user.id:
+            return Response({"detail": "Only the receiving doctor can complete this referral."}, status=403)
+        referral.status = Referral.STATUS_COMPLETED
+        referral.response_notes = request.data.get("notes", referral.response_notes)
+        referral.completed_at = timezone.now()
+        referral.updated_by = request.user
+        referral.save()
+        audit_log(request.user, AuditLog.ACTION_UPDATE, "clinical.referral", record=str(referral.patient), object_id=referral.id, request=request, description="referral completed")
+        return Response(ReferralSerializer(referral, context={"request": request}).data)

@@ -66,6 +66,8 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.departments",
     "apps.staff",
+    "apps.scheduling",
+    "apps.messaging",
     "apps.patients",
     "apps.appointments",
     "apps.clinical",
