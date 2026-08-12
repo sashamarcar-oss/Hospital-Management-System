@@ -211,7 +211,11 @@ function NewItemDialog() {
   const [supplier, setSupplier] = useState<string>("");
   const [location, setLocation] = useState("");
 
-  const { data: suppliers } = useQuery({
+  const {
+    data: suppliers,
+    isLoading: isLoadingSuppliers,
+    isError: isSuppliersError,
+  } = useQuery({
     queryKey: ["inventory", "suppliers", "options"],
     queryFn: () =>
       api.get<Paginated<{ id: number; name: string }>>("/inventory/suppliers/", { params: { page_size: 200 } }).then((r) => r.data),
@@ -293,14 +297,30 @@ function NewItemDialog() {
           </div>
           <div className="space-y-2">
             <Label>Supplier</Label>
-            <Select value={supplier} onValueChange={setSupplier}>
-              <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
+            <Select value={supplier} onValueChange={setSupplier} disabled={isLoadingSuppliers || isSuppliersError}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoadingSuppliers
+                      ? "Loading suppliers..."
+                      : isSuppliersError
+                        ? "Unable to load suppliers"
+                        : "Select supplier"
+                  }
+                />
+              </SelectTrigger>
               <SelectContent>
                 {(suppliers?.results ?? []).map((s) => (
                   <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                 ))}
+                {!isLoadingSuppliers && !isSuppliersError && suppliers?.results.length === 0 && (
+                  <SelectItem value="__none__" disabled>No suppliers available</SelectItem>
+                )}
               </SelectContent>
             </Select>
+            {isSuppliersError && (
+              <p className="text-destructive text-sm">Unable to load suppliers from the server.</p>
+            )}
           </div>
         </div>
         <DialogFooter>

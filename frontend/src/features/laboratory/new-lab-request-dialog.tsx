@@ -42,7 +42,11 @@ export function NewLabRequestDialog({ defaultPatientId }: { defaultPatientId?: n
   const [category, setCategory] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const { data: catalog } = useQuery({
+  const {
+    data: catalog,
+    isLoading: isLoadingCatalog,
+    isError: isCatalogError,
+  } = useQuery({
     queryKey: ["laboratory", "catalog", category],
     queryFn: () =>
       api
@@ -120,7 +124,10 @@ export function NewLabRequestDialog({ defaultPatientId }: { defaultPatientId?: n
             </div>
             <div className="space-y-2">
               <Label>Test category</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Select
+                value={category || "all"}
+                onValueChange={(value) => setCategory(value === "all" ? "" : value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
@@ -144,6 +151,14 @@ export function NewLabRequestDialog({ defaultPatientId }: { defaultPatientId?: n
               Tests <span className="text-red-500">*</span>
             </Label>
             <div className="border-input bg-muted/20 max-h-52 space-y-1.5 overflow-y-auto rounded-md border p-2">
+              {isLoadingCatalog && (
+                <p className="text-muted-foreground py-3 text-center text-sm">Loading test catalog...</p>
+              )}
+              {isCatalogError && (
+                <p className="text-destructive py-3 text-center text-sm">
+                  Unable to load tests. Please check the server connection and try again.
+                </p>
+              )}
               {(catalog?.results ?? []).map((t) => (
                 <label key={t.id} className="hover:bg-muted/60 flex cursor-pointer items-start gap-2 rounded p-1.5">
                   <Checkbox
@@ -160,7 +175,7 @@ export function NewLabRequestDialog({ defaultPatientId }: { defaultPatientId?: n
                   </div>
                 </label>
               ))}
-              {catalog && catalog.results.length === 0 && (
+              {!isLoadingCatalog && !isCatalogError && catalog && catalog.results.length === 0 && (
                 <p className="text-muted-foreground text-center text-sm">No tests in this category.</p>
               )}
             </div>
