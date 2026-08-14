@@ -35,7 +35,7 @@ def audit_log(
     )
 
 
-def notify(recipient, title, message, notification_type=Notification.TYPE_GENERAL, link=""):
+def notify(recipient, title, message, notification_type=Notification.TYPE_GENERAL, link="", related_module="", related_object_id=None, priority=Notification.PRIORITY_NORMAL):
     """Create an in-app notification. Email delivery is queued via Celery when available."""
     notification = Notification.objects.create(
         recipient=recipient,
@@ -43,6 +43,9 @@ def notify(recipient, title, message, notification_type=Notification.TYPE_GENERA
         message=message,
         type=notification_type,
         link=link,
+        related_module=related_module,
+        related_object_id=related_object_id,
+        priority=priority,
     )
     try:
         from apps.core.tasks import send_notification_email

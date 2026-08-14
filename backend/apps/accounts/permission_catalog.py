@@ -22,6 +22,7 @@ MODULES = [
     "payments",
     "insurance",
     "staff",
+    "shifts",
     "departments",
     "reports",
     "settings",
@@ -44,6 +45,7 @@ EXTRA_PERMISSIONS = {
     "patients": ["print_summary"],
     "consultations": ["prescribe", "request_lab", "request_imaging", "refer"],
     "admissions": ["assign_bed", "transfer", "discharge"],
+    "emergency": ["assign"],
     "documents": ["upload", "download"],
 }
 
@@ -80,7 +82,8 @@ ROLE_PERMISSIONS = {
         "admissions.update", "admissions.assign_bed", "admissions.transfer", "admissions.discharge",
         "emergency.view", "emergency.create", "emergency.update", "billing.view", "billing.cancel_invoice", "payments.view",
         "insurance.view", "insurance.manage_claims", "staff.view", "staff.create",
-        "staff.update", "departments.view", "departments.create", "departments.update",
+        "staff.update", "shifts.view", "shifts.create", "shifts.update", "shifts.delete",
+        "departments.view", "departments.create", "departments.update",
         "reports.view", "reports.view_financial", "reports.view_operational",
         "reports.export", "audit.view", "documents.view", "documents.download",
         "settings.manage_users", "settings.manage_permissions",
@@ -91,48 +94,62 @@ ROLE_PERMISSIONS = {
         "patients.print_summary", "appointments.view", "appointments.create",
         "appointments.update", "appointments.checkin", "appointments.reschedule",
         "appointments.cancel", "queue.view", "queue.create", "queue.update",
-        "departments.view", "vitals.view", "admissions.view", "notifications.view",
+        "departments.view", "vitals.view", "admissions.view", "emergency.view", "emergency.create",
+        "billing.view", "payments.view", "payments.create", "payments.receive_payment", "shifts.view",
+        "documents.view", "documents.download", "notifications.view",
     ],
     "doctor": [
         "dashboard.view", "patients.view", "patients.print_summary", "appointments.view",
+        "shifts.view",
         "appointments.update", "queue.view", "consultations.view", "consultations.create",
         "consultations.update", "consultations.prescribe", "consultations.request_lab",
         "consultations.request_imaging", "consultations.refer", "vitals.view",
         "vitals.create", "laboratory.view", "laboratory.review", "radiology.view",
         "radiology.create", "radiology.update", "admissions.view", "admissions.create",
         "admissions.discharge", "emergency.view", "emergency.create", "emergency.update", "documents.view",
-        "documents.download", "notifications.view",
+        "documents.download", "reports.view", "notifications.view",
     ],
     "nurse": [
-        "dashboard.view", "patients.view", "vitals.view", "vitals.create",
+        "dashboard.view", "patients.view", "appointments.view", "vitals.view", "vitals.create",
+        "shifts.view",
         "vitals.update", "queue.view", "admissions.view", "admissions.update",
-        "admissions.assign_bed", "emergency.view", "emergency.update",
-        "notifications.view",
+        "admissions.assign_bed", "emergency.view", "emergency.update", "consultations.view",
+        "laboratory.view", "pharmacy.view", "documents.view", "documents.download", "notifications.view",
     ],
     "lab_technician": [
-        "dashboard.view", "patients.view", "laboratory.view", "laboratory.create",
+        "dashboard.view", "patients.view", "appointments.view", "queue.view", "consultations.view", "vitals.view",
+        "laboratory.view", "laboratory.create",
+        "shifts.view",
         "laboratory.update", "laboratory.process", "laboratory.enter_results",
-        "laboratory.review", "notifications.view",
+        "laboratory.review", "documents.view", "documents.download", "notifications.view",
     ],
     "pharmacist": [
-        "dashboard.view", "patients.view", "pharmacy.view", "pharmacy.create",
+        "dashboard.view", "patients.view", "consultations.view", "admissions.view", "pharmacy.view", "pharmacy.create",
+        "shifts.view",
         "pharmacy.update", "pharmacy.delete", "pharmacy.dispense",
         "pharmacy.adjust_stock", "inventory.view", "inventory.update",
-        "inventory.create", "notifications.view",
+        "inventory.create", "documents.view", "documents.download", "notifications.view",
+    ],
+    "radiologist": [
+        "dashboard.view", "patients.view", "appointments.view", "queue.view", "consultations.view",
+        "radiology.view", "radiology.create", "radiology.update", "shifts.view",
+        "documents.view", "documents.download", "notifications.view",
     ],
     "accountant": [
-        "dashboard.view", "patients.view", "billing.view", "billing.create",
+        "dashboard.view", "patients.view", "billing.view", "billing.create", "shifts.view",
         "billing.update", "billing.cancel_invoice", "payments.view",
         "payments.create", "payments.receive_payment", "payments.refund",
         "insurance.view", "insurance.create", "insurance.manage_claims",
-        "reports.view", "reports.view_financial", "reports.export",
-        "notifications.view",
+        "reports.view", "reports.view_financial", "reports.export", "documents.view",
+        "documents.download", "notifications.view",
     ],
     "hr": [
         "dashboard.view", "staff.view", "staff.create", "staff.update",
-        "staff.delete", "staff.manage_leave", "staff.manage_attendance",
+        "staff.delete", "staff.manage_leave", "staff.manage_attendance", "shifts.view",
+        "shifts.create", "shifts.update", "shifts.delete",
         "departments.view", "departments.update", "settings.manage_permissions",
-        "notifications.view",
+        "reports.view", "reports.view_operational", "documents.view", "documents.upload",
+        "documents.download", "notifications.view",
     ],
     "patient": [
         "appointments.view", "appointments.create", "appointments.reschedule",
@@ -144,6 +161,6 @@ ROLE_PERMISSIONS = {
 
 
 def permissions_for_role(role_code):
-    if role_code == "super_admin":
+    if role_code in ("super_admin", "admin"):
         return flat_permission_codes()
     return ROLE_PERMISSIONS.get(role_code, [])

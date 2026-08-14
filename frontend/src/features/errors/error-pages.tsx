@@ -9,13 +9,10 @@ export function ForbiddenPage() {
         <AlertOctagon className="size-8" />
       </div>
       <h1 className="text-3xl font-semibold">403 — Access denied</h1>
-      <p className="text-muted-foreground max-w-md text-sm">
-        You do not have permission to view this page. If you believe this is a mistake, contact
-        your system administrator.
-      </p>
+      <p className="text-muted-foreground max-w-md text-sm">You do not have permission to access this module.</p>
       <div className="flex gap-3">
         <Link to="/dashboard">
-          <Button>Back to dashboard</Button>
+          <Button>Return to Dashboard</Button>
         </Link>
         <Link to="/login">
           <Button variant="outline">Sign in</Button>

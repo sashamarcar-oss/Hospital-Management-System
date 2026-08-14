@@ -22,8 +22,8 @@ class AuditLogSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ["id", "type", "title", "message", "link", "is_read", "created_at"]
-        read_only_fields = ["id", "type", "title", "message", "link", "created_at"]
+        fields = ["id", "type", "title", "message", "link", "related_module", "related_object_id", "priority", "is_read", "created_at"]
+        read_only_fields = ["id", "type", "title", "message", "link", "related_module", "related_object_id", "priority", "created_at"]
 
 
 class DocumentSerializer(serializers.ModelSerializer):

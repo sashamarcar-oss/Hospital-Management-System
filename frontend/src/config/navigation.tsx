@@ -86,7 +86,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Administration",
     items: [
-      { label: "Shift Management", to: "/shifts", icon: CalendarClock, anyPermission: ["staff.view", "dashboard.view"] },
+      { label: "Shift Management", to: "/shifts", icon: CalendarClock, anyPermission: ["shifts.view", "shifts.create", "shifts.update", "shifts.delete"] },
       { label: "Messages", to: "/messages", icon: MessageSquare },
       { label: "Staff", to: "/staff", icon: UserRound, permission: "staff.view" },
       { label: "Departments", to: "/departments", icon: Building2, permission: "departments.view" },
@@ -104,13 +104,19 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-export function getNavGroups(can: (code: string) => boolean, canAny: (codes: string[]) => boolean): NavGroup[] {
+export function getNavGroups(can: (code: string) => boolean, canAny: (codes: string[]) => boolean, roleCode?: string | null): NavGroup[] {
+  const isHospitalManagement = ["admin", "super_admin", "hr"].includes(roleCode ?? "");
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
       (item) =>
-        (!item.permission || can(item.permission)) &&
-        (!item.anyPermission || canAny(item.anyPermission))
-    ),
+        (item.to === "/shifts" && isHospitalManagement || !item.permission || can(item.permission)) &&
+        (item.to === "/shifts" && isHospitalManagement || !item.anyPermission || canAny(item.anyPermission))
+    ).map((item) => {
+      if (item.to !== "/shifts" || ["admin", "super_admin", "hr"].includes(roleCode ?? "")) return item;
+      return roleCode === "nurse"
+        ? { ...item, label: "My Shifts", to: "/my-shifts" }
+        : { ...item, label: "My Schedule", to: "/my-shifts" };
+    }),
   })).filter((group) => group.items.length > 0);
 }

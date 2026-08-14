@@ -118,7 +118,9 @@ class LabResultViewSet(viewsets.ModelViewSet):
     queryset = LabResult.objects.select_related("request_item__test", "request_item__lab_request").all()
     serializer_class = LabResultSerializer
     permission_classes = [HasPermission]
-    code = "laboratory.enter_results"
+    code = "laboratory.view"
+    create_code = "laboratory.enter_results"
+    write_code = "laboratory.enter_results"
     filterset_fields = ["request_item", "is_abnormal"]
     search_fields = ["request_item__lab_request__patient__first_name",
                      "request_item__lab_request__patient__last_name"]

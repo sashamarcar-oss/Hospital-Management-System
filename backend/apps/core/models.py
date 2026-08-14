@@ -139,6 +139,17 @@ class Notification(models.Model):
         (TYPE_GENERAL, "General"),
     ]
 
+    PRIORITY_LOW = "low"
+    PRIORITY_NORMAL = "normal"
+    PRIORITY_HIGH = "high"
+    PRIORITY_URGENT = "urgent"
+    PRIORITY_CHOICES = [
+        (PRIORITY_LOW, "Low"),
+        (PRIORITY_NORMAL, "Normal"),
+        (PRIORITY_HIGH, "High"),
+        (PRIORITY_URGENT, "Urgent"),
+    ]
+
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
     )
@@ -146,6 +157,9 @@ class Notification(models.Model):
     title = models.CharField(max_length=200)
     message = models.TextField()
     link = models.CharField(max_length=255, blank=True)
+    related_module = models.CharField(max_length=64, blank=True)
+    related_object_id = models.IntegerField(null=True, blank=True)
+    priority = models.CharField(max_length=16, choices=PRIORITY_CHOICES, default=PRIORITY_NORMAL)
     is_read = models.BooleanField(default=False)
     email_sent = models.BooleanField(default=False)
     sms_sent = models.BooleanField(default=False)

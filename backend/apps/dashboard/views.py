@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import Role
+from apps.accounts.permissions import HasPermission
 from apps.appointments.models import Appointment, Queue
 from apps.billing.models import Invoice, Payment
 from apps.clinical.models import Diagnosis, Prescription, VitalSigns
@@ -16,8 +17,12 @@ from apps.laboratory.models import LabRequest
 from apps.patients.models import Patient
 
 
-class KPIsView(APIView):
-    permission_classes = [IsAuthenticated]
+class DashboardAccessView(APIView):
+    permission_classes = [HasPermission]
+    code = "dashboard.view"
+
+
+class KPIsView(DashboardAccessView):
 
     def get(self, request):
         today = timezone.now().date()
@@ -54,8 +59,7 @@ class KPIsView(APIView):
         })
 
 
-class ChartsView(APIView):
-    permission_classes = [IsAuthenticated]
+class ChartsView(DashboardAccessView):
 
     def get(self, request):
         today = timezone.now().date()
@@ -125,33 +129,58 @@ class ChartsView(APIView):
         })
 
 
-class ActivityFeedView(APIView):
-    permission_classes = [IsAuthenticated]
+class ActivityFeedView(DashboardAccessView):
 
     def get(self, request):
-        limit = int(request.query_params.get("limit", 15))
-        from apps.core.models import AuditLog
+        limit = max(1, min(int(request.query_params.get("limit", 15)), 50))
+        system_scope = request.query_params.get("scope") == "system"
+        is_admin = request.user.in_roles("admin", "super_admin") or request.user.is_superuser
+        if system_scope and not is_admin:
+            return Response({"detail": "Only administrators can view system activity."}, status=403)
 
-        events = AuditLog.objects.select_related("user").filter(
+        from apps.core.models import AuditLog, Notification
+
+        audit_events = AuditLog.objects.select_related("user").filter(
             action__in=["create", "payment", "dispense", "update", "upload"]
-        )[:limit]
-        feed = [
-            {
-                "id": e.id,
-                "user": e.user.get_full_name() if e.user else "System",
-                "action": e.action,
-                "module": e.module,
-                "record": e.record,
-                "description": e.description,
-                "timestamp": e.created_at.isoformat(),
-            }
-            for e in events
-        ]
-        return Response(feed)
+        )
+        if not system_scope:
+            # A normal user's audit stream is intentionally limited to actions
+            # they performed. Directly assigned events arrive as notifications.
+            audit_events = audit_events.filter(user=request.user)
+        feed = [{
+            "id": f"audit-{event.id}",
+            "kind": "activity",
+            "user": event.user.get_full_name() if event.user else "System",
+            "action": event.action,
+            "module": event.module,
+            "record": event.record,
+            "title": "System activity",
+            "description": event.description,
+            "is_read": True,
+            "priority": "normal",
+            "timestamp": event.created_at.isoformat(),
+        } for event in audit_events[:limit]]
+
+        if not system_scope:
+            feed.extend({
+                "id": f"notification-{notification.id}",
+                "kind": "notification",
+                "user": "System announcement" if notification.type == "general" else "Assigned to you",
+                "action": "notification",
+                "module": notification.related_module or notification.type,
+                "record": "",
+                "title": notification.title,
+                "description": notification.message,
+                "is_read": notification.is_read,
+                "priority": notification.priority,
+                "timestamp": notification.created_at.isoformat(),
+            } for notification in Notification.objects.filter(recipient=request.user)[:limit])
+
+        feed.sort(key=lambda item: item["timestamp"], reverse=True)
+        return Response(feed[:limit])
 
 
-class VitalSignsTrendView(APIView):
-    permission_classes = [IsAuthenticated]
+class VitalSignsTrendView(DashboardAccessView):
 
     def get(self, request):
         patient = request.query_params.get("patient")

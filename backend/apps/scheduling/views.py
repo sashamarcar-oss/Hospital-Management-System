@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 from apps.accounts.models import Role
 from apps.core.models import AuditLog
@@ -9,25 +9,46 @@ from apps.core.services import audit_log, notify
 from apps.scheduling.models import NurseShift
 from apps.scheduling.serializers import NurseShiftSerializer
 
+
+SHIFT_WRITE_PERMISSIONS = {
+    "create": "shifts.create",
+    "update": "shifts.update",
+    "partial_update": "shifts.update",
+    "destroy": "shifts.delete",
+}
+
+
+def can_manage_shifts(user):
+    """Managers and explicitly authorised staff may access the roster."""
+    if user.is_superuser or user.in_roles(Role.CODE_ADMIN, Role.CODE_SUPER_ADMIN, Role.CODE_HR):
+        return True
+    return user.has_any_permission_code(SHIFT_WRITE_PERMISSIONS.values())
+
+
+class ShiftAccessPermission(BasePermission):
+    """Allow staff to read their own schedule, while protecting roster changes."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        action = getattr(view, "action", None)
+        if request.method in SAFE_METHODS:
+            return can_manage_shifts(user) or user.has_permission_code("shifts.view")
+        permission = SHIFT_WRITE_PERMISSIONS.get(action)
+        return bool(permission and (can_manage_shifts(user) or user.has_permission_code(permission)))
+
+
 class NurseShiftViewSet(viewsets.ModelViewSet):
     serializer_class = NurseShiftSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ShiftAccessPermission]
     filterset_fields = ["nurse", "department", "shift_type", "status", "shift_date"]
     search_fields = ["nurse__first_name", "nurse__last_name", "nurse__username", "location"]
     ordering_fields = ["shift_date", "start_time", "status"]
-    def is_manager(self): return self.request.user.in_roles(Role.CODE_ADMIN, Role.CODE_SUPER_ADMIN, Role.CODE_HR) or self.request.user.is_superuser
+    def is_manager(self): return can_manage_shifts(self.request.user)
     def get_queryset(self):
         qs = NurseShift.objects.select_related("nurse__department", "department", "created_by")
         return qs if self.is_manager() else qs.filter(nurse=self.request.user)
-    def create(self, request, *args, **kwargs):
-        if not self.is_manager(): return Response({"detail": "Only shift managers can create shifts."}, status=403)
-        return super().create(request, *args, **kwargs)
-    def update(self, request, *args, **kwargs):
-        if not self.is_manager(): return Response({"detail": "Only shift managers can update shifts."}, status=403)
-        return super().update(request, *args, **kwargs)
-    def destroy(self, request, *args, **kwargs):
-        if not self.is_manager(): return Response({"detail": "Only shift managers can cancel shifts."}, status=403)
-        return super().destroy(request, *args, **kwargs)
     def perform_create(self, serializer):
         shift = serializer.save(created_by=self.request.user); notify(shift.nurse, "New shift assigned", f"You have been assigned a {shift.get_shift_type_display()} shift on {shift.shift_date}.", link="/my-shifts"); audit_log(self.request.user, AuditLog.ACTION_CREATE, "shifts.nurse_shift", record=str(shift.id), object_id=shift.id, request=self.request)
     def perform_update(self, serializer):

@@ -23,6 +23,7 @@ class Role(models.Model):
     CODE_DOCTOR = "doctor"
     CODE_NURSE = "nurse"
     CODE_LAB_TECHNICIAN = "lab_technician"
+    CODE_RADIOLOGIST = "radiologist"
     CODE_PHARMACIST = "pharmacist"
     CODE_ACCOUNTANT = "accountant"
     CODE_HR = "hr"
@@ -35,6 +36,7 @@ class Role(models.Model):
         (CODE_DOCTOR, "Doctor"),
         (CODE_NURSE, "Nurse"),
         (CODE_LAB_TECHNICIAN, "Laboratory Technician"),
+        (CODE_RADIOLOGIST, "Radiologist / Radiology Technician"),
         (CODE_PHARMACIST, "Pharmacist"),
         (CODE_ACCOUNTANT, "Accountant / Cashier"),
         (CODE_HR, "HR / Staff Manager"),

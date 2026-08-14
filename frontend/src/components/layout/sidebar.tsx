@@ -5,8 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { getNavGroups } from "@/config/navigation";
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { can, canAny } = useAuth();
-  const groups = getNavGroups(can, canAny);
+  const { can, canAny, user } = useAuth();
+  const groups = getNavGroups(can, canAny, user?.role_code);
 
   return (
     <div className="flex h-full flex-col">

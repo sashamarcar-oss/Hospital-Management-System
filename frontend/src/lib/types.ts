@@ -750,6 +750,9 @@ export interface Notification {
   title: string;
   message: string;
   link: string;
+  related_module: string;
+  related_object_id: number | null;
+  priority: "low" | "normal" | "high" | "urgent";
   is_read: boolean;
   created_at: string;
 }
@@ -795,12 +798,16 @@ export interface DashboardCharts {
 }
 
 export interface ActivityItem {
-  id: number;
+  id: string;
+  kind: "activity" | "notification";
   user: string;
   action: string;
   module: string;
   record: string;
   description: string;
+  title: string;
+  is_read: boolean;
+  priority: "low" | "normal" | "high" | "urgent";
   timestamp: string;
 }
 

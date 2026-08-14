@@ -187,7 +187,11 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     queryset = Prescription.objects.select_related("patient", "doctor").all()
     serializer_class = PrescriptionSerializer
     permission_classes = [HasPermission]
-    code = "consultations.prescribe"
+    # Pharmacists and patients may read prescriptions; only clinicians with
+    # the explicit prescribing action may create or alter them.
+    code = "pharmacy.view"
+    create_code = "consultations.prescribe"
+    write_code = "consultations.prescribe"
     filterset_fields = ["status", "patient", "doctor", "consultation"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__patient_number"]
     ordering_fields = ["created_at"]

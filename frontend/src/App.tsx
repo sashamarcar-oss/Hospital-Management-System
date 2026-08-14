@@ -47,6 +47,14 @@ import { PatientPortalPage } from "@/features/portal/patient-portal-page";
 import { NurseShiftsPage } from "@/features/shifts/nurse-shifts-page";
 import { ShiftManagementPage } from "@/features/shifts/shift-management-page";
 import { MessagesPage } from "@/features/messages/messages-page";
+import { useAuth } from "@/hooks/use-auth";
+
+function ShiftsRoute() {
+  const { can, canAny, hasRole } = useAuth();
+  const canManage = hasRole("admin", "super_admin", "hr") || canAny(["shifts.create", "shifts.update", "shifts.delete"]);
+  if (canManage) return <ShiftManagementPage />;
+  return can("shifts.view") ? <Navigate to="/my-shifts" replace /> : <Navigate to="/403" replace />;
+}
 
 export default function App() {
   return (
@@ -98,8 +106,8 @@ export default function App() {
         <Route path="/notifications" element={<RoleRoute permission="notifications.view"><NotificationsPage /></RoleRoute>} />
         <Route path="/documents" element={<RoleRoute permission="documents.view"><DocumentsPage /></RoleRoute>} />
         <Route path="/portal" element={<RoleRoute permission="appointments.view"><PatientPortalPage /></RoleRoute>} />
-        <Route path="/my-shifts" element={<NurseShiftsPage />} />
-        <Route path="/shifts" element={<ShiftManagementPage />} />
+        <Route path="/my-shifts" element={<RoleRoute permission="shifts.view"><NurseShiftsPage /></RoleRoute>} />
+        <Route path="/shifts" element={<ShiftsRoute />} />
         <Route path="/messages" element={<MessagesPage />} />
       </Route>
     </Routes>

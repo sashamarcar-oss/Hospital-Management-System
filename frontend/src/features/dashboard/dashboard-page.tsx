@@ -237,8 +237,8 @@ export function DashboardPage() {
 
         <Card className="gap-4">
           <CardHeader>
-            <CardTitle>Activity feed</CardTitle>
-            <CardDescription>Recent system activity</CardDescription>
+            <CardTitle>My activity</CardTitle>
+            <CardDescription>Your recent actions and assigned updates</CardDescription>
           </CardHeader>
           <CardContent>
             {activityLoading ? (
@@ -250,7 +250,7 @@ export function DashboardPage() {
             ) : activityError ? (
               <ErrorState onRetry={refetchActivity} />
             ) : activity?.length === 0 ? (
-              <EmptyState title="No recent activity" description="Actions performed in the system will appear here." />
+              <EmptyState title="No recent activity" description="Your actions and assigned updates will appear here." />
             ) : (
               <div className="space-y-1">
                 {activity?.map((item) => (
@@ -263,9 +263,8 @@ export function DashboardPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm">
-                        <span className="font-medium">{item.user || "System"}</span>{" "}
-                        <span className="text-muted-foreground">{AUDIT_ACTION_LABELS[item.action] ?? item.action}</span>{" "}
-                        <span className="font-medium capitalize">{item.module}</span>
+                        <span className="font-medium">{item.kind === "notification" ? item.title : item.user || "System"}</span>{" "}
+                        {item.kind === "activity" && <><span className="text-muted-foreground">{AUDIT_ACTION_LABELS[item.action] ?? item.action}</span>{" "}<span className="font-medium capitalize">{item.module}</span></>}
                       </p>
                       {item.description && (
                         <p className="text-muted-foreground line-clamp-1 text-xs">{item.description}</p>

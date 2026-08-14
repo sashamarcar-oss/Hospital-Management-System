@@ -1,5 +1,6 @@
 from django.utils import timezone
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -52,6 +53,8 @@ class EmergencyVisitViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def assign_doctor(self, request, pk=None):
+        if not request.user.has_permission_code("emergency.assign"):
+            raise PermissionDenied("You do not have permission to assign emergency doctors.")
         visit = self.get_object()
         return self._transition(request, visit, visit.status, "doctor assigned",
                                 extra={"assigned_doctor_id": request.data.get("doctor")})

@@ -48,6 +48,13 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         notification.save(update_fields=["is_read"])
         return Response(NotificationSerializer(notification).data)
 
+    @action(detail=True, methods=["post"])
+    def mark_unread(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = False
+        notification.save(update_fields=["is_read"])
+        return Response(NotificationSerializer(notification).data)
+
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.select_related("patient", "uploaded_by").all()
