@@ -46,13 +46,21 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [{ label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, permission: "dashboard.view", end: true }],
   },
   {
-    label: "Clinical",
+    label: "Patient Journey",
     items: [
-      { label: "Queue", to: "/queue", icon: ListOrdered, permission: "queue.view" },
-      { label: "Appointments", to: "/appointments", icon: CalendarDays, permission: "appointments.view" },
+      { label: "Register Patient", to: "/patients/register", icon: Users, permission: "patients.create" },
       { label: "Patients", to: "/patients", icon: Users, permission: "patients.view" },
+      { label: "Appointments", to: "/appointments", icon: CalendarDays, permission: "appointments.view" },
+      { label: "Queue & Check-in", to: "/queue", icon: ListOrdered, permission: "queue.view" },
+      { label: "Emergency", to: "/emergency", icon: Siren, permission: "emergency.view" },
+    ],
+  },
+  {
+    label: "Clinical Care",
+    items: [
       { label: "Consultations", to: "/consultations", icon: Stethoscope, permission: "consultations.view" },
       { label: "Vital Signs", to: "/vitals", icon: HeartPulse, permission: "vitals.view" },
+      { label: "Admissions", to: "/admissions", icon: BedDouble, permission: "admissions.view" },
     ],
   },
   {
@@ -63,17 +71,10 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Pharmacy & Stock",
+    label: "Medication & Stock",
     items: [
       { label: "Pharmacy", to: "/pharmacy", icon: Pill, permission: "pharmacy.view" },
       { label: "Inventory", to: "/inventory", icon: Boxes, permission: "inventory.view" },
-    ],
-  },
-  {
-    label: "Inpatient",
-    items: [
-      { label: "Admissions", to: "/admissions", icon: BedDouble, permission: "admissions.view" },
-      { label: "Emergency", to: "/emergency", icon: Siren, permission: "emergency.view" },
     ],
   },
   {
@@ -84,15 +85,20 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Administration",
+    label: "My Work",
     items: [
       { label: "Shift Management", to: "/shifts", icon: CalendarClock, anyPermission: ["shifts.view", "shifts.create", "shifts.update", "shifts.delete"] },
       { label: "Messages", to: "/messages", icon: MessageSquare },
+      { label: "Documents", to: "/documents", icon: FileText, permission: "documents.view" },
+      { label: "Notifications", to: "/notifications", icon: Bell, permission: "notifications.view" },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
       { label: "Staff", to: "/staff", icon: UserRound, permission: "staff.view" },
       { label: "Departments", to: "/departments", icon: Building2, permission: "departments.view" },
       { label: "Reports", to: "/reports", icon: BarChart3, permission: "reports.view" },
-      { label: "Documents", to: "/documents", icon: FileText, permission: "documents.view" },
-      { label: "Notifications", to: "/notifications", icon: Bell, permission: "notifications.view" },
       {
         label: "Settings",
         to: "/settings",
