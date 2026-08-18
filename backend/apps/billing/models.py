@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -97,8 +99,6 @@ class Invoice(BaseModel):
         return f"INV-{year}-{(last or 0) + 1:04d}"
 
     def recalculate(self, commit=True):
-        from decimal import Decimal
-
         if self.pk:
             items = self.items.all()
             subtotal = sum((i.line_total for i in items), Decimal("0"))
@@ -113,10 +113,8 @@ class Invoice(BaseModel):
         self.total = round(total, 2)
         self.amount_paid = round(self._paid_total(), 2)
         self.balance = round(self.total - self.amount_paid, 2)
-        if self.balance < 0:
-            self.balance = Decimal("0")
         if self.status != self.STATUS_CANCELLED:
-            if self.balance == 0 and self.total > 0:
+            if self.balance <= 0:
                 self.status = self.STATUS_PAID
             elif self.amount_paid > 0:
                 self.status = self.STATUS_PARTIALLY_PAID
@@ -137,6 +135,17 @@ class Invoice(BaseModel):
             total=models.Sum("amount")
         )["total"] or 0
 
+    @classmethod
+    def patient_credit(cls, patient, exclude_pk=None):
+        """Total available credit (sum of negative balances) for a patient."""
+        qs = cls.objects.filter(patient=patient)
+        if exclude_pk is not None:
+            qs = qs.exclude(pk=exclude_pk)
+        total_balance = qs.aggregate(total=models.Sum("balance"))["total"]
+        if total_balance is None:
+            return Decimal("0")
+        return abs(total_balance) if total_balance < 0 else Decimal("0")
+
 
 class InvoiceItem(BaseModel):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="items")
@@ -147,7 +156,6 @@ class InvoiceItem(BaseModel):
     charge_type = models.ForeignKey(
         ChargeType, null=True, blank=True, on_delete=models.SET_NULL, related_name="invoice_items"
     )
-    # Optional references to source records for automatic charge generation.
     consultation = models.ForeignKey(
         "clinical.Consultation", null=True, blank=True, on_delete=models.SET_NULL, related_name="billing_items"
     )
@@ -184,6 +192,7 @@ class Payment(BaseModel):
     METHOD_MOBILE = "mobile_money"
     METHOD_MPESA = "mpesa"
     METHOD_INSURANCE = "insurance"
+    METHOD_CREDIT = "credit"
 
     METHOD_CHOICES = [
         (METHOD_CASH, "Cash"),
@@ -192,21 +201,39 @@ class Payment(BaseModel):
         (METHOD_MOBILE, "Mobile Money"),
         (METHOD_MPESA, "M-Pesa"),
         (METHOD_INSURANCE, "Insurance"),
+        (METHOD_CREDIT, "Credit Transfer"),
     ]
 
     STATUS_PENDING = "pending"
     STATUS_COMPLETED = "completed"
     STATUS_FAILED = "failed"
     STATUS_REFUNDED = "refunded"
+    STATUS_REVERSED = "reversed"
+    STATUS_CANCELLED = "cancelled"
 
     STATUS_CHOICES = [
         (STATUS_PENDING, "Pending"),
         (STATUS_COMPLETED, "Completed"),
         (STATUS_FAILED, "Failed"),
         (STATUS_REFUNDED, "Refunded"),
+        (STATUS_REVERSED, "Reversed"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    REFUND_STATUS_NONE = ""
+    REFUND_STATUS_PENDING = "pending_approval"
+    REFUND_STATUS_APPROVED = "approved"
+    REFUND_STATUS_REJECTED = "rejected"
+
+    REFUND_STATUS_CHOICES = [
+        (REFUND_STATUS_NONE, "No Refund"),
+        (REFUND_STATUS_PENDING, "Pending Approval"),
+        (REFUND_STATUS_APPROVED, "Approved"),
+        (REFUND_STATUS_REJECTED, "Rejected"),
     ]
 
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="payments")
+    payment_number = models.CharField(max_length=32, unique=True, editable=False, null=True, blank=True)
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     method = models.CharField(max_length=16, choices=METHOD_CHOICES, default=METHOD_CASH)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_COMPLETED)
@@ -217,6 +244,7 @@ class Payment(BaseModel):
     )
     paid_at = models.DateTimeField(default=timezone.now)
     notes = models.TextField(blank=True)
+    idempotency_key = models.CharField(max_length=64, unique=True, null=True, blank=True)
     insurance_provider = models.CharField(max_length=120, blank=True)
     policy_number = models.CharField(max_length=80, blank=True)
     member_name = models.CharField(max_length=120, blank=True)
@@ -225,14 +253,35 @@ class Payment(BaseModel):
     patient_copay = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     mpesa_phone = models.CharField(max_length=20, blank=True)
     mpesa_transaction_code = models.CharField(max_length=64, blank=True)
+    refund_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    refund_reason = models.TextField(blank=True)
+    refund_status = models.CharField(max_length=20, choices=REFUND_STATUS_CHOICES, default=REFUND_STATUS_NONE, blank=True)
+    refund_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    refund_approved_at = models.DateTimeField(null=True, blank=True)
+    reverse_reason = models.TextField(blank=True)
+    reversed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    reversed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-paid_at"]
 
     def __str__(self):
-        return f"{self.receipt_number} - {self.amount}"
+        return f"{self.payment_number or self.receipt_number} - {self.amount}"
 
     def save(self, *args, **kwargs):
+        if not self.payment_number:
+            year = timezone.now().year
+            last = (
+                Payment.all_objects.filter(payment_number__startswith=f"PAY-{year}-")
+                .order_by("-id").values_list("id", flat=True).first()
+            )
+            self.payment_number = f"PAY-{year}-{(last or 0) + 1:04d}"
         if not self.receipt_number:
             year = timezone.now().year
             last = (
@@ -243,3 +292,52 @@ class Payment(BaseModel):
         super().save(*args, **kwargs)
         if self.status == Payment.STATUS_COMPLETED:
             self.invoice.recalculate()
+
+
+class PaymentGatewayTransaction(BaseModel):
+    """Audit record for payment gateway interactions used during reconciliation."""
+
+    PROVIDER_MPESA = "mpesa"
+    PROVIDER_CARD = "card"
+    PROVIDER_BANK = "bank"
+
+    PROVIDER_CHOICES = [
+        (PROVIDER_MPESA, "M-Pesa (Daraja)"),
+        (PROVIDER_CARD, "Card Processor"),
+        (PROVIDER_BANK, "Bank Feed"),
+    ]
+
+    STATUS_UNMATCHED = "unmatched"
+    STATUS_MATCHED = "matched"
+    STATUS_DISPUTED = "disputed"
+
+    RECONCILIATION_CHOICES = [
+        (STATUS_UNMATCHED, "Unmatched"),
+        (STATUS_MATCHED, "Matched"),
+        (STATUS_DISPUTED, "Disputed"),
+    ]
+
+    payment = models.ForeignKey(
+        Payment, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="gateway_transactions",
+    )
+    provider = models.CharField(max_length=16, choices=PROVIDER_CHOICES)
+    provider_reference = models.CharField(max_length=128, db_index=True)
+    provider_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    provider_timestamp = models.DateTimeField(null=True, blank=True)
+    raw_response = models.JSONField(default=dict, blank=True)
+    reconciliation_status = models.CharField(
+        max_length=16, choices=RECONCILIATION_CHOICES, default=STATUS_UNMATCHED,
+    )
+    reconciled_at = models.DateTimeField(null=True, blank=True)
+    reconciled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.provider}:{self.provider_reference} ({self.reconciliation_status})"

@@ -1,6 +1,7 @@
 """Application configuration for the Hospital Management System."""
 
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 
@@ -430,6 +431,13 @@ CELERY_RESULT_BACKEND = env(
 )
 
 CELERY_TASK_TRACK_STARTED = True
+
+if "test" in sys.argv:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    PASSWORD_HASHERS = [
+        "django.contrib.auth.hashers.MD5PasswordHasher",
+    ]
 
 
 # ============================================================================

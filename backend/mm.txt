@@ -1,0 +1,140 @@
+It is impossible to add the field 'created_at' with 'auto_now_add=True' to bedassignment without providing a default. This is because the database needs something to populate existing rows.
+ 1) Provide a one-off default now which will be set on all existing rows
+ 2) Quit and manually define a default value in models.py.
+Select an option: Please enter the default value as valid Python.
+Accept the default 'timezone.now' by pressing 'Enter' or provide another value.
+The datetime and django.utils.timezone modules are available, so it is possible to provide e.g. timezone.now as a value.
+Type 'exit' to exit this prompt
+[default: timezone.now] >>> Migrations for 'accounts':
+  backend\apps\accounts\migrations\0003_alter_role_code.py
+    ~ Alter field code on role
+Migrations for 'core':
+  backend\apps\core\migrations\0003_alter_notification_type.py
+    ~ Alter field type on notification
+Migrations for 'inpatient':
+  backend\apps\inpatient\migrations\0003_fluidbalance_icumonitoringsheet_icuthreshold_and_more.py
+    + Create model FluidBalance
+    + Create model ICUMonitoringSheet
+    + Create model ICUThreshold
+    + Create model NurseAssignment
+    + Create model NursingNoteAmendment
+    ~ Change Meta options on icumonitoringrecord
+    + Add field admission_number to admission
+    + Add field assigned_nurse to admission
+    + Add field expected_discharge_date to admission
+    + Add field last_cleaned_at to bed
+    + Add field notes to bed
+    + Add field created_at to bedassignment
+    + Add field created_by to bedassignment
+    + Add field deleted_at to bedassignment
+    + Add field expected_discharge_date to bedassignment
+    + Add field is_deleted to bedassignment
+    + Add field notes to bedassignment
+    + Add field released_by to bedassignment
+    + Add field room to bedassignment
+    + Add field updated_at to bedassignment
+    + Add field updated_by to bedassignment
+    + Add field ward to bedassignment
+    + Add field blood_glucose to icumonitoringrecord
+    + Add field blood_pressure_diastolic to icumonitoringrecord
+    + Add field blood_pressure_systolic to icumonitoringrecord
+    + Add field drain_output_ml to icumonitoringrecord
+    + Add field gcs_eye to icumonitoringrecord
+    + Add field gcs_motor to icumonitoringrecord
+    + Add field gcs_verbal to icumonitoringrecord
+    + Add field iv_intake_ml to icumonitoringrecord
+    + Add field map_arterial to icumonitoringrecord
+    + Add field oral_intake_ml to icumonitoringrecord
+    + Add field other_output_ml to icumonitoringrecord
+    + Add field oxygen_flow_rate to icumonitoringrecord
+    + Add field oxygen_therapy to icumonitoringrecord
+    + Add field positioning to icumonitoringrecord
+    + Add field pressure_injury_risk to icumonitoringrecord
+    + Add field pupil_left to icumonitoringrecord
+    + Add field pupil_right to icumonitoringrecord
+    + Add field skin_condition to icumonitoringrecord
+    + Add field spo2 to icumonitoringrecord
+    + Add field ventilator_mode to icumonitoringrecord
+    + Add field ventilator_settings to icumonitoringrecord
+    + Add field bed to nursinghandover
+    + Add field current_condition to nursinghandover
+    + Add field follow_up_required to nursinghandover
+    + Add field handover_date to nursinghandover
+    + Add field important_observations to nursinghandover
+    + Add field incoming_nurse to nursinghandover
+    + Add field interventions_provided to nursinghandover
+    + Add field recent_changes to nursinghandover
+    + Add field shift_type to nursinghandover
+    + Add field ward to nursinghandover
+    + Add field amended_from to nursingnote
+    + Add field amendment_reason to nursingnote
+    + Add field bed to nursingnote
+    + Add field consciousness to nursingnote
+    + Add field doctor_instructions to nursingnote
+    + Add field end_time to nursingnote
+    + Add field fall_risk to nursingnote
+    + Add field fluid_intake_ml to nursingnote
+    + Add field fluid_output_ml to nursingnote
+    + Add field handover_current_condition to nursingnote
+    + Add field handover_follow_up_required to nursingnote
+    + Add field handover_important_observations to nursingnote
+    + Add field handover_interventions_provided to nursingnote
+    + Add field handover_pending_tasks to nursingnote
+    + Add field handover_recent_changes to nursingnote
+    + Add field mobility to nursingnote
+    + Add field note_date to nursingnote
+    + Add field nutrition_intake to nursingnote
+    + Add field pain_assessment to nursingnote
+    + Add field pain_score to nursingnote
+    + Add field patient_complaints to nursingnote
+    + Add field safety_concerns to nursingnote
+    + Add field shift_type to nursingnote
+    + Add field start_time to nursingnote
+    + Add field status to nursingnote
+    + Add field submitted_at to nursingnote
+    + Add field ward to nursingnote
+    + Add field wound_dressing_observations to nursingnote
+    ~ Alter field assigned_by on bedassignment
+    ~ Alter field blood_pressure on icumonitoringrecord
+    ~ Alter field consciousness on icumonitoringrecord
+    ~ Alter field frequency on icumonitoringrecord
+    ~ Alter field respiratory_support on icumonitoringrecord
+    ~ Alter field nurse on nursinghandover
+    ~ Alter field note on nursingnote
+    ~ Alter field shift on nursingnote
+    + Create index inpatient_b_admissi_c32a84_idx on field(s) admission, -assigned_at of model bedassignment
+    + Create index inpatient_b_bed_id_5f063c_idx on field(s) bed, -assigned_at of model bedassignment
+    + Create index inpatient_n_admissi_a983d3_idx on field(s) admission, -recorded_at of model nursinghandover
+    + Create index inpatient_n_admissi_abe7e3_idx on field(s) admission, -recorded_at of model nursingnote
+    + Create constraint uniq_active_admission_bed_assignment on model bedassignment
+    + Create constraint uniq_active_bed_assignment on model bedassignment
+    + Add field admission to fluidbalance
+    + Add field created_by to fluidbalance
+    + Add field nurse to fluidbalance
+    + Add field updated_by to fluidbalance
+    + Add field admission to icumonitoringsheet
+    + Add field bed to icumonitoringsheet
+    + Add field created_by to icumonitoringsheet
+    + Add field doctor to icumonitoringsheet
+    + Add field nurse to icumonitoringsheet
+    + Add field updated_by to icumonitoringsheet
+    + Add field sheet to icumonitoringrecord
+    + Create index inpatient_i_admissi_33afaf_idx on field(s) admission, recorded_at of model icumonitoringrecord
+    + Add field created_by to icuthreshold
+    + Add field updated_by to icuthreshold
+    + Add field admission to nurseassignment
+    + Add field assigned_by to nurseassignment
+    + Add field created_by to nurseassignment
+    + Add field nurse to nurseassignment
+    + Add field updated_by to nurseassignment
+    + Add field amended_by to nursingnoteamendment
+    + Add field created_by to nursingnoteamendment
+    + Add field note to nursingnoteamendment
+    + Add field updated_by to nursingnoteamendment
+    + Create index inpatient_f_admissi_d276d9_idx on field(s) admission, -balance_date of model fluidbalance
+    + Create index inpatient_i_admissi_5a7740_idx on field(s) admission, -monitoring_date of model icumonitoringsheet
+    + Create constraint uniq_active_nurse_assignment on model nurseassignment
+Migrations for 'clinical':
+  backend\apps\clinical\migrations\0003_vitalsigns_admission_vitalsigns_blood_glucose.py
+    + Add field admission to vitalsigns
+    + Add field blood_glucose to vitalsigns

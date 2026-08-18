@@ -498,7 +498,10 @@ export interface InvoiceItem {
 
 export interface Payment {
   id: number;
+  payment_number: string;
   invoice: number;
+  invoice_number: string;
+  patient_details: PatientSummary;
   amount: string;
   method: string;
   status: string;
@@ -508,8 +511,35 @@ export interface Payment {
   received_by_name: string;
   paid_at: string;
   notes: string;
-  insurance_provider: string; policy_number: string; member_name: string; authorization_number: string;
-  insurance_amount: string; patient_copay: string; mpesa_phone: string; mpesa_transaction_code: string;
+  insurance_provider: string;
+  policy_number: string;
+  member_name: string;
+  authorization_number: string;
+  insurance_amount: string;
+  patient_copay: string;
+  mpesa_phone: string;
+  mpesa_transaction_code: string;
+  refund_amount: string;
+  refund_reason: string;
+  refund_status: string;
+  refund_approved_by: number | null;
+  refund_approved_by_name: string;
+  refund_approved_at: string | null;
+  reverse_reason: string;
+  reversed_by: number | null;
+  reversed_by_name: string;
+  reversed_at: string | null;
+}
+
+export interface PaymentStats {
+  today_collection: string;
+  total_payments: string;
+  total_count: number;
+  mpesa_collection: string;
+  cash_collection: string;
+  card_collection: string;
+  bank_collection: string;
+  outstanding_balance: string;
 }
 
 export interface Invoice {

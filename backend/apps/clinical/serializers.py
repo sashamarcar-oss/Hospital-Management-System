@@ -38,9 +38,9 @@ class VitalSignsSerializer(serializers.ModelSerializer):
     class Meta:
         model = VitalSigns
         fields = [
-            "id", "patient", "consultation", "temperature", "blood_pressure_systolic",
+            "id", "patient", "admission", "consultation", "temperature", "blood_pressure_systolic",
             "blood_pressure_diastolic", "pulse", "respiratory_rate", "oxygen_saturation",
-            "weight", "height", "bmi", "pain_score", "notes", "recorded_by", "recorded_by_name",
+            "weight", "height", "bmi", "pain_score", "blood_glucose", "notes", "recorded_by", "recorded_by_name",
             "recorded_at",
         ]
         read_only_fields = ["bmi", "recorded_by", "recorded_at"]
@@ -63,7 +63,7 @@ class NestedVitalSignsSerializer(serializers.ModelSerializer):
         fields = [
             "id", "temperature", "blood_pressure_systolic", "blood_pressure_diastolic",
             "pulse", "respiratory_rate", "oxygen_saturation", "weight", "height",
-            "pain_score", "notes",
+            "pain_score", "blood_glucose", "notes",
         ]
         read_only_fields = ["id"]
 

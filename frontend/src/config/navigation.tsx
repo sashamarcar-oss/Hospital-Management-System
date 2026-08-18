@@ -81,6 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Finance",
     items: [
       { label: "Billing", to: "/billing", icon: Receipt, permission: "billing.view" },
+      { label: "Payments", to: "/payments", icon: Receipt, permission: "payments.view" },
       { label: "Insurance", to: "/insurance", icon: ShieldCheck, permission: "insurance.view" },
     ],
   },

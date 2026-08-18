@@ -193,19 +193,35 @@ function NewInvoiceDialog() {
   const [taxRate, setTaxRate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [cashAmount, setCashAmount] = useState("");
 
   const mutation = useMutation({
-    mutationFn: () =>
-      api.post("/billing/", {
+    mutationFn: async () => {
+      const res = await api.post("/billing/", {
         patient,
         discount: discount ? Number(discount) : 0,
         tax_rate: taxRate ? Number(taxRate) : 0,
         due_date: dueDate || null,
         notes,
-      }),
+      });
+      const cash = Number(cashAmount);
+      if (cash > 0) {
+        await api.post("/billing/payments/", {
+          invoice: res.data.id,
+          amount: cash,
+          method: "cash",
+        });
+      }
+      return res;
+    },
     onSuccess: () => {
-      success("Invoice created", "Charge items can be added to it.");
+      const cash = Number(cashAmount);
+      success(
+        "Invoice created",
+        cash > 0 ? `Cash payment of ${cash.toFixed(2)} recorded.` : "Charge items can be added to it.",
+      );
       setOpen(false);
+      setCashAmount("");
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
     onError: (err) => error(getErrorMessage(err, "Unable to create invoice.")),
@@ -245,6 +261,18 @@ function NewInvoiceDialog() {
               <Label>Notes</Label>
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Cash amount</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={cashAmount}
+              onChange={(e) => setCashAmount(e.target.value)}
+              placeholder="0.00"
+            />
+            <p className="text-xs text-muted-foreground">Optional. Record an upfront cash payment with this invoice.</p>
           </div>
         </div>
         <DialogFooter>

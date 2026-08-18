@@ -62,6 +62,14 @@ class Diagnosis(BaseModel):
 
 class VitalSigns(BaseModel):
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="vital_signs")
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vital_signs",
+        help_text="Optional inpatient admission this reading belongs to.",
+    )
     consultation = models.ForeignKey(
         Consultation, on_delete=models.SET_NULL, null=True, blank=True, related_name="vital_signs"
     )
@@ -75,6 +83,7 @@ class VitalSigns(BaseModel):
     height = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     bmi = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     pain_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    blood_glucose = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, help_text="mmol/L")
     notes = models.TextField(blank=True)
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"

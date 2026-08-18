@@ -1,0 +1,17 @@
+C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\db\backends\utils.py:98: RuntimeWarning: Accessing the database during app initialization is discouraged. To fix this warning, avoid executing queries in AppConfig.ready() or when your app modules are imported.
+  warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+super_admin 151
+admin 151
+receptionist 33
+doctor 37
+nurse 33
+lab_technician 16
+pharmacist 17
+accountant 18
+hr 20
+patient 13
+radiologist 12
+icu_nurse 29
+nurse has nursing.update: True
+receptionist discharge: True
+icu_nurse nursing.update: True

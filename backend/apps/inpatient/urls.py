@@ -4,9 +4,9 @@ from apps.inpatient.views import (
     AdmissionViewSet,
     BedViewSet,
     DischargeViewSet,
-    NursingNoteViewSet,
-    NursingHandoverViewSet,
     ICUMonitoringRecordViewSet,
+    NursingHandoverViewSet,
+    NursingNoteViewSet,
     RoomViewSet,
     WardViewSet,
 )

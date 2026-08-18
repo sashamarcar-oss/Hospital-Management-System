@@ -1,0 +1,6 @@
+Operations to perform:
+  Apply all migrations: accounts, admin, appointments, auth, billing, clinical, contenttypes, core, departments, emergency, inpatient, insurance, inventory, laboratory, messaging, patients, pharmacy, radiology, scheduling, sessions, staff, token_blacklist
+Running migrations:
+  Applying inpatient.0003_fluidbalance_icumonitoringsheet_icuthreshold_and_more... OK
+  Applying clinical.0003_vitalsigns_admission_vitalsigns_blood_glucose... OK
+  Applying core.0003_alter_notification_type... OK

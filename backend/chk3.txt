@@ -1,0 +1,75 @@
+C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\db\backends\utils.py:98: RuntimeWarning: Accessing the database during app initialization is discouraged. To fix this warning, avoid executing queries in AppConfig.ready() or when your app modules are imported.
+  warnings.warn(self.APPS_NOT_READY_WARNING_MSG, category=RuntimeWarning)
+Traceback (most recent call last):
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\manage.py", line 21, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\manage.py", line 17, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\management\__init__.py", line 443, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\management\__init__.py", line 437, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\management\base.py", line 422, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\management\base.py", line 466, in execute
+    output = self.handle(*args, **options)
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\management\commands\check.py", line 81, in handle
+    self.check(
+    ~~~~~~~~~~^
+        app_configs=app_configs,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        databases=options["databases"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\management\base.py", line 498, in check
+    all_issues = checks.run_checks(
+        app_configs=app_configs,
+    ...<2 lines>...
+        databases=databases,
+    )
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\checks\registry.py", line 99, in run_checks
+    new_errors = check(app_configs=app_configs, databases=databases)
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\core\checks\urls.py", line 136, in check_custom_error_handlers
+    handler = resolver.resolve_error_handler(status_code)
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\urls\resolvers.py", line 743, in resolve_error_handler
+    callback = getattr(self.urlconf_module, "handler%s" % view_type, None)
+                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\utils\functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\urls\resolvers.py", line 722, in urlconf_module
+    return import_module(self.urlconf_name)
+  File "C:\Python314\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 759, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\config\urls.py", line 31, in <module>
+    path("api/nursing/", include("apps.inpatient.nursing_urls")),
+                         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\venv\Lib\site-packages\django\urls\conf.py", line 39, in include
+    urlconf_module = import_module(urlconf_module)
+  File "C:\Python314\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 759, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "C:\Users\Admin\PROJECTS\Hospital Management System\backend\apps\inpatient\nursing_urls.py", line 14, in <module>
+    path("dashboard/", NursingDashboardView.as_view(), name="nursing-dashboard"),
+    ^^^^
+NameError: name 'path' is not defined

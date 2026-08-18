@@ -22,6 +22,7 @@ class Role(models.Model):
     CODE_RECEPTIONIST = "receptionist"
     CODE_DOCTOR = "doctor"
     CODE_NURSE = "nurse"
+    CODE_ICU_NURSE = "icu_nurse"
     CODE_LAB_TECHNICIAN = "lab_technician"
     CODE_RADIOLOGIST = "radiologist"
     CODE_PHARMACIST = "pharmacist"
@@ -35,6 +36,7 @@ class Role(models.Model):
         (CODE_RECEPTIONIST, "Receptionist"),
         (CODE_DOCTOR, "Doctor"),
         (CODE_NURSE, "Nurse"),
+        (CODE_ICU_NURSE, "ICU Nurse"),
         (CODE_LAB_TECHNICIAN, "Laboratory Technician"),
         (CODE_RADIOLOGIST, "Radiologist / Radiology Technician"),
         (CODE_PHARMACIST, "Pharmacist"),
@@ -64,7 +66,8 @@ class Role(models.Model):
             self.CODE_ADMIN: "/dashboard",
             self.CODE_RECEPTIONIST: "/queue",
             self.CODE_DOCTOR: "/consultations",
-            self.CODE_NURSE: "/dashboard",
+            self.CODE_NURSE: "/inpatient/bed-board",
+            self.CODE_ICU_NURSE: "/icu/monitoring",
             self.CODE_LAB_TECHNICIAN: "/laboratory",
             self.CODE_PHARMACIST: "/pharmacy",
             self.CODE_ACCOUNTANT: "/billing",

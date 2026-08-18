@@ -30,6 +30,7 @@ import { BedsPage } from "@/features/admissions/beds-page";
 import { DischargePage } from "@/features/admissions/discharge-page";
 import { BillingPage } from "@/features/billing/billing-page";
 import { InvoiceDetailPage } from "@/features/billing/invoice-detail-page";
+import { PaymentsPage } from "@/features/billing/payments-page";
 import { InsurancePage } from "@/features/insurance/insurance-page";
 import { InventoryPage } from "@/features/inventory/inventory-page";
 import { PurchaseOrdersPage } from "@/features/inventory/purchase-orders-page";
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/admissions/beds" element={<RoleRoute permission="admissions.view"><BedsPage /></RoleRoute>} />
         <Route path="/admissions/discharges" element={<RoleRoute permission="discharge.view"><DischargePage /></RoleRoute>} />
         <Route path="/billing" element={<RoleRoute permission="billing.view"><BillingPage /></RoleRoute>} />
+        <Route path="/payments" element={<RoleRoute permission="payments.view"><PaymentsPage /></RoleRoute>} />
         <Route path="/billing/:id" element={<RoleRoute permission="billing.view"><InvoiceDetailPage /></RoleRoute>} />
         <Route path="/insurance" element={<RoleRoute permission="insurance.view"><InsurancePage /></RoleRoute>} />
         <Route path="/inventory" element={<RoleRoute permission="inventory.view"><InventoryPage /></RoleRoute>} />

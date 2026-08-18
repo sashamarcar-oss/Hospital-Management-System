@@ -215,35 +215,55 @@ export const ADMISSION_STATUS_VARIANTS: Record<string, "default" | "warning" | "
   discharged: "neutral",
 };
 
-export const INVOICE_STATUSES = ["unpaid", "partially_paid", "paid", "overdue", "cancelled"] as const;
+export const INVOICE_STATUSES = ["unpaid", "partially_paid", "paid", "overdue", "cancelled", "insurance_pending", "insurance_approved", "insurance_rejected"] as const;
 export const INVOICE_STATUS_LABELS: Record<string, string> = {
   unpaid: "Unpaid",
   partially_paid: "Partially Paid",
   paid: "Paid",
   overdue: "Overdue",
   cancelled: "Cancelled",
+  insurance_pending: "Insurance Pending",
+  insurance_approved: "Insurance Approved",
+  insurance_rejected: "Insurance Rejected",
 };
-export const INVOICE_STATUS_VARIANTS: Record<string, "neutral" | "warning" | "success" | "danger" | "destructive"> = {
+export const INVOICE_STATUS_VARIANTS: Record<string, "neutral" | "warning" | "success" | "danger" | "destructive" | "info"> = {
   unpaid: "neutral",
   partially_paid: "warning",
   paid: "success",
   overdue: "danger",
   cancelled: "destructive",
+  insurance_pending: "info",
+  insurance_approved: "success",
+  insurance_rejected: "danger",
 };
 
-export const PAYMENT_METHODS = ["cash", "insurance", "mpesa"] as const;
+export const PAYMENT_METHODS = ["cash", "card", "bank", "mobile_money", "mpesa", "insurance", "credit"] as const;
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: "Cash",
+  card: "Card",
+  bank: "Bank Transfer",
+  mobile_money: "Mobile Money",
   mpesa: "M-Pesa",
   insurance: "Insurance",
+  credit: "Credit Transfer",
 };
 
-export const PAYMENT_STATUSES = ["pending", "completed", "failed", "refunded"] as const;
+export const PAYMENT_STATUSES = ["pending", "completed", "failed", "refunded", "reversed", "cancelled"] as const;
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   completed: "Completed",
   failed: "Failed",
   refunded: "Refunded",
+  reversed: "Reversed",
+  cancelled: "Cancelled",
+};
+export const PAYMENT_STATUS_VARIANTS: Record<string, "neutral" | "success" | "warning" | "danger" | "destructive"> = {
+  pending: "warning",
+  completed: "success",
+  failed: "danger",
+  refunded: "neutral",
+  reversed: "destructive",
+  cancelled: "destructive",
 };
 
 export const CHARGE_CATEGORIES = ["consultation", "laboratory", "imaging", "medication", "procedure", "admission", "bed", "service"] as const;

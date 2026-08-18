@@ -125,6 +125,12 @@ class Notification(models.Model):
     TYPE_ADMISSION = "admission"
     TYPE_DISCHARGE = "discharge"
     TYPE_BALANCE = "balance"
+    TYPE_BED_ASSIGNMENT = "bed_assignment"
+    TYPE_TRANSFER = "transfer"
+    TYPE_HANDOVER = "handover"
+    TYPE_ICU_ALERT = "icu_alert"
+    TYPE_VITALS = "vitals"
+    TYPE_SHIFT_REMINDER = "shift_reminder"
     TYPE_GENERAL = "general"
 
     TYPE_CHOICES = [
@@ -136,6 +142,12 @@ class Notification(models.Model):
         (TYPE_ADMISSION, "Admission"),
         (TYPE_DISCHARGE, "Discharge"),
         (TYPE_BALANCE, "Balance"),
+        (TYPE_BED_ASSIGNMENT, "Bed Assignment"),
+        (TYPE_TRANSFER, "Patient Transfer"),
+        (TYPE_HANDOVER, "Shift Handover"),
+        (TYPE_ICU_ALERT, "ICU Alert"),
+        (TYPE_VITALS, "Vital Signs"),
+        (TYPE_SHIFT_REMINDER, "Shift Reminder"),
         (TYPE_GENERAL, "General"),
     ]
 
