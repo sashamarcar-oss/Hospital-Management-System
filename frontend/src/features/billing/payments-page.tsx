@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   Banknote,
   CreditCard,
@@ -15,9 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { api, downloadFile, getErrorMessage } from "@/lib/api";
-import type { Invoice, Paginated, Payment, PaymentStats, PatientSummary } from "@/lib/types";
+import type { Invoice, Paginated, Payment, PaymentStats } from "@/lib/types";
 import { PageHeader } from "@/components/common/page-header";
 import { PatientSelect } from "@/components/common/patient-select";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -65,10 +64,10 @@ export function PaymentsPage() {
   const [showReceivePayment, setShowReceivePayment] = useState(false);
 
   const params: Record<string, string> = {
-    search: search || undefined,
     page_size: "100",
     ordering: "-paid_at",
   };
+  if (search) params.search = search;
   if (statusFilter !== "all") params.status = statusFilter;
   if (methodFilter !== "all") params.method = methodFilter;
   if (dateFrom) params.date_from = dateFrom;
