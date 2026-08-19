@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Loader2, UserPlus, Users } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, getErrorMessage } from "@/lib/api";
+import { api, getErrorMessage, getFieldErrors } from "@/lib/api";
 import type { Paginated, Staff } from "@/lib/types";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
@@ -121,6 +121,7 @@ function NewStaffDialog() {
   const [dateJoined, setDateJoined] = useState("");
   const [salary, setSalary] = useState("");
   const [address, setAddress] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { data: roles } = useQuery({
     queryKey: ["auth", "roles"],
@@ -154,9 +155,14 @@ function NewStaffDialog() {
     onSuccess: () => {
       success("Staff member added", "A user account was created.");
       setOpen(false);
+      setFieldErrors({});
       queryClient.invalidateQueries({ queryKey: ["staff"] });
     },
-    onError: (err) => error(getErrorMessage(err, "Unable to add staff member.")),
+    onError: (err) => {
+      const fe = getFieldErrors(err);
+      if (Object.keys(fe).length > 0) setFieldErrors(fe);
+      error(getErrorMessage(err, "Unable to add staff member."));
+    },
   });
 
   const ready = username && email && firstName && lastName && role && password && employeeId && dateJoined;
@@ -177,18 +183,22 @@ function NewStaffDialog() {
           <div className="space-y-2">
             <Label>First name</Label>
             <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            {fieldErrors.first_name && <p className="text-destructive text-xs">{fieldErrors.first_name}</p>}
           </div>
           <div className="space-y-2">
             <Label>Last name</Label>
             <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            {fieldErrors.last_name && <p className="text-destructive text-xs">{fieldErrors.last_name}</p>}
           </div>
           <div className="space-y-2">
             <Label>Username</Label>
             <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+            {fieldErrors.username && <p className="text-destructive text-xs">{fieldErrors.username}</p>}
           </div>
           <div className="space-y-2">
             <Label>Email</Label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            {fieldErrors.email && <p className="text-destructive text-xs">{fieldErrors.email}</p>}
           </div>
           <div className="space-y-2">
             <Label>Phone</Label>
@@ -197,10 +207,11 @@ function NewStaffDialog() {
           <div className="space-y-2">
             <Label>Password</Label>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {fieldErrors.password && <p className="text-destructive text-xs">{fieldErrors.password}</p>}
           </div>
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select value={role} onValueChange={setRole}>
+            <Select value={role} onValueChange={(v) => { setRole(v); setFieldErrors((prev) => { const next = { ...prev }; delete next.role; return next; }); }}>
               <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
               <SelectContent>
                 {(roles ?? []).map((r) => (
@@ -208,6 +219,7 @@ function NewStaffDialog() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.role && <p className="text-destructive text-xs">{fieldErrors.role}</p>}
           </div>
           <div className="space-y-2">
             <Label>Department</Label>
@@ -223,10 +235,12 @@ function NewStaffDialog() {
           <div className="space-y-2">
             <Label>Employee ID</Label>
             <Input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} />
+            {fieldErrors.employee_id && <p className="text-destructive text-xs">{fieldErrors.employee_id}</p>}
           </div>
           <div className="space-y-2">
             <Label>Date joined</Label>
             <Input type="date" value={dateJoined} onChange={(e) => setDateJoined(e.target.value)} />
+            {fieldErrors.date_joined && <p className="text-destructive text-xs">{fieldErrors.date_joined}</p>}
           </div>
           <div className="space-y-2">
             <Label>Job title</Label>

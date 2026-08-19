@@ -100,9 +100,10 @@ class Invoice(BaseModel):
 
     def recalculate(self, commit=True):
         if self.pk:
-            items = self.items.all()
+            items = list(self.items.all())
             subtotal = sum((i.line_total for i in items), Decimal("0"))
         else:
+            items = []
             subtotal = Decimal("0")
         tax = subtotal * (Decimal(str(self.tax_rate)) / Decimal("100"))
         total = subtotal - Decimal(str(self.discount)) + tax
@@ -113,16 +114,22 @@ class Invoice(BaseModel):
         self.total = round(total, 2)
         self.amount_paid = round(self._paid_total(), 2)
         self.balance = round(self.total - self.amount_paid, 2)
+        
+        # Update status based on actual payments. An invoice becomes PAID only when
+        # a real successful payment has cleared the outstanding balance.
         if self.status != self.STATUS_CANCELLED:
-            if self.balance <= 0:
+            if self.total > 0 and self.amount_paid > 0 and self.balance <= 0:
                 self.status = self.STATUS_PAID
-            elif self.amount_paid > 0:
+            elif self.amount_paid > 0 and self.balance > 0:
                 self.status = self.STATUS_PARTIALLY_PAID
-            else:
+            elif self.amount_paid == 0 and self.balance > 0:
                 if self.due_date and self.due_date < timezone.now().date():
                     self.status = self.STATUS_OVERDUE
                 else:
                     self.status = self.STATUS_UNPAID
+            else:
+                self.status = self.STATUS_UNPAID
+        
         if commit:
             self.save(update_fields=[
                 "subtotal", "tax", "total", "amount_paid", "balance", "status",

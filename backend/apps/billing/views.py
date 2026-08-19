@@ -7,11 +7,15 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
-from apps.billing.models import ChargeType, Invoice, Payment, PaymentGatewayTransaction
+from apps.billing.models import ChargeType, Invoice, InvoiceItem, Payment, PaymentGatewayTransaction
 from apps.billing.serializers import (
     ChargeTypeSerializer,
+    InvoiceCreateSerializer,
+    InvoiceItemSerializer,
     InvoiceSerializer,
     PaymentGatewayTransactionSerializer,
     PaymentSerializer,
@@ -26,9 +30,50 @@ class ChargeTypeViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "billing.view"
     write_code = "billing.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name", "code"]
     filterset_fields = ["category", "is_active"]
     pagination_class = None
+
+
+class InvoiceItemViewSet(viewsets.ModelViewSet):
+    serializer_class = InvoiceItemSerializer
+    permission_classes = [HasPermission]
+    code = "billing.view"
+    write_code = "billing.update"
+
+    def get_queryset(self):
+        invoice_id = self.kwargs.get("invoice_pk")
+        if invoice_id:
+            return InvoiceItem.objects.filter(invoice_id=invoice_id)
+        return InvoiceItem.objects.none()
+
+    def perform_create(self, serializer):
+        invoice_id = self.kwargs.get("invoice_pk")
+        invoice = Invoice.objects.get(pk=invoice_id)
+        item = serializer.save(invoice=invoice)
+        audit_log(
+            self.request.user,
+            AuditLog.ACTION_CREATE,
+            "billing.invoice_item",
+            record=f"{invoice.invoice_number}",
+            object_id=item.id,
+            request=self.request,
+            new_value=InvoiceItemSerializer(item).data,
+        )
+
+    def perform_destroy(self, instance):
+        invoice = instance.invoice
+        instance.delete()
+        audit_log(
+            self.request.user,
+            AuditLog.ACTION_DELETE,
+            "billing.invoice_item",
+            record=f"{invoice.invoice_number}",
+            object_id=instance.id,
+            request=self.request,
+            description="invoice item deleted",
+        )
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
@@ -37,9 +82,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "billing.view"
     write_code = "billing.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "patient", "insurance_claim"]
     search_fields = ["invoice_number", "patient__first_name", "patient__last_name", "patient__patient_number"]
     ordering_fields = ["issued_at", "total", "balance"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return InvoiceCreateSerializer
+        return InvoiceSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -51,6 +102,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if patient_id:
             qs = qs.filter(patient_id=patient_id)
         return qs
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invoice = serializer.save()
+        audit_log(request.user, AuditLog.ACTION_CREATE, "billing.invoice",
+                  record=invoice.invoice_number, object_id=invoice.id,
+                  request=request, new_value=InvoiceSerializer(invoice).data)
+        return Response(InvoiceSerializer(invoice).data, status=201)
 
     def perform_create(self, serializer):
         invoice = serializer.save(issued_by=self.request.user, created_by=self.request.user)
@@ -90,6 +150,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         qs = self.get_queryset().filter(status=Invoice.STATUS_OVERDUE)
         return Response(InvoiceSerializer(qs, many=True).data)
 
+    @action(detail=False, methods=["get"], url_path="outstanding")
+    def outstanding(self, request):
+        qs = self.get_queryset().exclude(status=Invoice.STATUS_CANCELLED).filter(balance__gt=0)
+        patient_id = self.request.query_params.get("patient_id")
+        if patient_id:
+            qs = qs.filter(patient_id=patient_id)
+        qs = qs.order_by("-issued_at")
+        return Response(InvoiceSerializer(qs, many=True).data)
+
     @action(detail=False, methods=["get"])
     def summary(self, request):
         qs = self.get_queryset()
@@ -120,6 +189,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     code = "payments.view"
     write_code = "payments.receive_payment"
     create_code = "payments.receive_payment"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["invoice", "method", "status", "invoice__patient"]
     search_fields = [
         "payment_number", "receipt_number", "reference",
@@ -373,9 +443,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
             total=Sum("amount")
         )["total"] or Decimal("0")
 
-        outstanding = Invoice.objects.filter(
-            status__in=[Invoice.STATUS_UNPAID, Invoice.STATUS_PARTIALLY_PAID, Invoice.STATUS_OVERDUE]
-        ).aggregate(total=Sum("balance"))["total"] or Decimal("0")
+        outstanding = Invoice.objects.exclude(status=Invoice.STATUS_CANCELLED).filter(balance__gt=0).aggregate(
+            total=Sum("balance")
+        )["total"] or Decimal("0")
 
         return Response({
             "today_collection": str(round(today_collection, 2)),
@@ -396,6 +466,7 @@ class PaymentGatewayTransactionViewSet(viewsets.ModelViewSet):
     code = "payments.view"
     write_code = "payments.receive_payment"
     create_code = "payments.receive_payment"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["provider", "reconciliation_status", "payment"]
     search_fields = ["provider_reference", "payment__receipt_number"]
     ordering_fields = ["created_at", "provider_amount"]

@@ -106,6 +106,89 @@ class BillingBaseTestCase(APITestCase):
         self.client.force_authenticate(user=user)
 
 
+class InvoiceBusinessLogicTests(BillingBaseTestCase):
+    """Invoice creation and payment state must be computed from actual payments."""
+
+    def test_new_invoice_starts_unpaid_with_full_balance(self):
+        self._auth(self.accountant)
+        invoice = Invoice.objects.create(patient=self.patient, issued_by=self.accountant)
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            description="Consultation",
+            quantity=1,
+            unit_price=Decimal("10000.00"),
+        )
+        invoice.refresh_from_db()
+
+        self.assertEqual(invoice.total, Decimal("10000.00"))
+        self.assertEqual(invoice.amount_paid, Decimal("0.00"))
+        self.assertEqual(invoice.balance, Decimal("10000.00"))
+        self.assertEqual(invoice.status, Invoice.STATUS_UNPAID)
+
+    def test_partial_and_final_payment_update_status_and_balance(self):
+        self._auth(self.accountant)
+        invoice = Invoice.objects.create(patient=self.patient, issued_by=self.accountant)
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            description="Consultation",
+            quantity=1,
+            unit_price=Decimal("10000.00"),
+        )
+        invoice.refresh_from_db()
+
+        payment1 = self.client.post("/api/billing/payments/", {
+            "invoice": invoice.id,
+            "amount": "3000.00",
+            "method": "cash",
+        }, format="json")
+        self.assertEqual(payment1.status_code, status.HTTP_201_CREATED)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.amount_paid, Decimal("3000.00"))
+        self.assertEqual(invoice.balance, Decimal("7000.00"))
+        self.assertEqual(invoice.status, Invoice.STATUS_PARTIALLY_PAID)
+
+        payment2 = self.client.post("/api/billing/payments/", {
+            "invoice": invoice.id,
+            "amount": "7000.00",
+            "method": "cash",
+        }, format="json")
+        self.assertEqual(payment2.status_code, status.HTTP_201_CREATED)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.amount_paid, Decimal("10000.00"))
+        self.assertEqual(invoice.balance, Decimal("0.00"))
+        self.assertEqual(invoice.status, Invoice.STATUS_PAID)
+
+    def test_outstanding_invoice_api_excludes_paid_invoices(self):
+        self._auth(self.accountant)
+        invoice = Invoice.objects.create(patient=self.patient, issued_by=self.accountant)
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            description="Consultation",
+            quantity=1,
+            unit_price=Decimal("10000.00"),
+        )
+        invoice.refresh_from_db()
+
+        resp = self.client.get("/api/billing/outstanding/", {"patient_id": self.patient.id})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        invoice_ids = [entry["id"] for entry in resp.data]
+        self.assertIn(invoice.id, invoice_ids)
+
+        payment = Payment.objects.create(
+            invoice=invoice,
+            amount=Decimal("10000.00"),
+            method="cash",
+            status=Payment.STATUS_COMPLETED,
+        )
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.status, Invoice.STATUS_PAID)
+
+        resp = self.client.get("/api/billing/outstanding/", {"patient_id": self.patient.id})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        invoice_ids_after_payment = [entry["id"] for entry in resp.data]
+        self.assertNotIn(invoice.id, invoice_ids_after_payment)
+
+
 # ---------------------------------------------------------------------------
 # Issue 1: Access Control
 # ---------------------------------------------------------------------------

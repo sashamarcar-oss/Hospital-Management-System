@@ -30,6 +30,13 @@ class MedicineSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(
         queryset=MedicineCategory.objects.all(), required=False, allow_null=True
     )
+    initial_batch_number = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    initial_quantity = serializers.IntegerField(write_only=True, required=False, min_value=1)
+    initial_expiry_date = serializers.DateField(write_only=True, required=False, allow_null=True)
+    initial_supplier = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    initial_purchase_price = serializers.DecimalField(
+        write_only=True, required=False, allow_null=True, max_digits=12, decimal_places=2
+    )
 
     class Meta:
         model = Medicine
@@ -38,6 +45,8 @@ class MedicineSerializer(serializers.ModelSerializer):
             "manufacturer", "unit", "strength", "reorder_level", "purchase_price",
             "selling_price", "requires_prescription", "is_active", "total_stock",
             "is_low_stock", "earliest_expiry", "batches", "created_at",
+            "initial_batch_number", "initial_quantity", "initial_expiry_date",
+            "initial_supplier", "initial_purchase_price",
         ]
 
 

@@ -142,6 +142,10 @@ function NewMedicineDialog() {
   const [purchasePrice, setPurchasePrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [requiresPrescription, setRequiresPrescription] = useState(false);
+  const [batchNumber, setBatchNumber] = useState("");
+  const [batchQuantity, setBatchQuantity] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [batchSupplier, setBatchSupplier] = useState("");
 
   const { data: categories } = useQuery({
     queryKey: ["pharmacy", "categories"],
@@ -162,6 +166,11 @@ function NewMedicineDialog() {
         purchase_price: purchasePrice,
         selling_price: sellingPrice,
         requires_prescription: requiresPrescription,
+        initial_batch_number: batchNumber || undefined,
+        initial_quantity: batchQuantity ? Number(batchQuantity) : undefined,
+        initial_expiry_date: expiryDate || undefined,
+        initial_supplier: batchSupplier || undefined,
+        initial_purchase_price: purchasePrice || undefined,
       }),
     onSuccess: () => {
       success("Medicine added");
@@ -178,7 +187,7 @@ function NewMedicineDialog() {
           <Plus /> Add medicine
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add medicine</DialogTitle>
           <DialogDescription>Add a new medicine to the pharmacy catalogue.</DialogDescription>
@@ -248,6 +257,27 @@ function NewMedicineDialog() {
             />
             Requires prescription
           </label>
+          <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+            <p className="text-sm font-medium">Initial Stock (optional)</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Batch number</Label>
+                <Input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} placeholder="e.g. BATCH-2026-01" />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input type="number" min={1} value={batchQuantity} onChange={(e) => setBatchQuantity(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Expiry date</Label>
+                <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Supplier</Label>
+                <Input value={batchSupplier} onChange={(e) => setBatchSupplier(e.target.value)} />
+              </div>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>

@@ -3,6 +3,8 @@ from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.clinical.models import Prescription, PrescriptionItem
@@ -30,6 +32,7 @@ class MedicineCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "pharmacy.view"
     pagination_class = None
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name"]
 
 
@@ -38,9 +41,38 @@ class MedicineViewSet(viewsets.ModelViewSet):
     serializer_class = MedicineSerializer
     permission_classes = [HasPermission]
     code = "pharmacy.view"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name", "generic_name", "brand_name", "manufacturer"]
     filterset_fields = ["category", "is_active", "requires_prescription"]
     ordering_fields = ["name", "created_at"]
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        batch_number = serializer.validated_data.pop("initial_batch_number", None)
+        quantity = serializer.validated_data.pop("initial_quantity", None)
+        expiry_date = serializer.validated_data.pop("initial_expiry_date", None)
+        supplier = serializer.validated_data.pop("initial_supplier", "")
+        batch_price = serializer.validated_data.pop("initial_purchase_price", None)
+        medicine = serializer.save()
+        if batch_number and quantity:
+            batch = MedicineBatch.objects.create(
+                medicine=medicine,
+                batch_number=batch_number,
+                quantity=quantity,
+                purchase_price=batch_price or medicine.purchase_price,
+                expiry_date=expiry_date,
+                supplier=supplier,
+            )
+            MedicineStockMovement.objects.create(
+                medicine=medicine,
+                batch=batch,
+                movement_type=MedicineStockMovement.MOVEMENT_RECEIVE,
+                quantity=quantity,
+                balance_after=medicine.total_stock,
+                reference="initial_stock",
+                notes=f"Initial batch {batch_number}",
+                performed_by=self.request.user,
+            )
 
     @property
     def _stock_qs(self):

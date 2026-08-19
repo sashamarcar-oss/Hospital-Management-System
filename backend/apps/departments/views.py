@@ -1,5 +1,7 @@
 from django.db.models import Count
 from rest_framework import viewsets
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.departments.models import Department
@@ -14,6 +16,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "departments.view"
     write_code = "departments.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name", "code"]
     filterset_fields = ["is_active"]
     ordering_fields = ["name", "created_at"]

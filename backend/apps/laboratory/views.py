@@ -3,6 +3,8 @@ from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.core.models import AuditLog
@@ -21,6 +23,7 @@ class LabTestCatalogViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "laboratory.view"
     write_code = "laboratory.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name", "category", "sample_type"]
     filterset_fields = ["category", "is_active"]
     ordering_fields = ["name", "price"]
@@ -32,6 +35,7 @@ class LabRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "laboratory.view"
     write_code = "laboratory.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "priority", "patient", "doctor", "consultation"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__patient_number"]
     ordering_fields = ["requested_at", "priority"]
@@ -121,6 +125,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
     code = "laboratory.view"
     create_code = "laboratory.enter_results"
     write_code = "laboratory.enter_results"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["request_item", "is_abnormal"]
     search_fields = ["request_item__lab_request__patient__first_name",
                      "request_item__lab_request__patient__last_name"]

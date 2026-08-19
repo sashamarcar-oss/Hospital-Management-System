@@ -164,7 +164,7 @@ def build_receipt_pdf(payment) -> io.BytesIO:
     summary = [
         ["Invoice Total", f"{invoice.total:,.2f}"],
         ["Previously Paid", f"{invoice.amount_paid - payment.amount:,.2f}"],
-        ["This Payment", f"{invoice.amount_paid:,.2f}"],
+        ["This Payment", f"{payment.amount:,.2f}"],
         ["Remaining Balance", f"{invoice.balance:,.2f}"],
     ]
     summary_table = Table(summary, colWidths=[200, 120])

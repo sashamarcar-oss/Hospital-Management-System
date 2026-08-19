@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Banknote, Loader2, XCircle } from "lucide-react";
+import { ArrowLeft, Banknote, Loader2, Plus, Trash2, XCircle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, getErrorMessage } from "@/lib/api";
@@ -83,26 +83,35 @@ export function InvoiceDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Invoice items</CardTitle>
-              <CardDescription>
-                <StatusBadge value={invoice.status} labels={INVOICE_STATUS_LABELS} variants={INVOICE_STATUS_VARIANTS} />
-              </CardDescription>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Invoice items</CardTitle>
+                <CardDescription>
+                  <StatusBadge value={invoice.status} labels={INVOICE_STATUS_LABELS} variants={INVOICE_STATUS_VARIANTS} />
+                </CardDescription>
+              </div>
+              {invoice.status !== "cancelled" && <AddItemDialog invoice={invoice} />}
             </CardHeader>
             <CardContent>
               {invoice.items.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No items on this invoice yet.</p>
+                <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+                  <p>No items on this invoice yet.</p>
+                  <p className="text-xs mt-1">Add billable services and items to generate a total.</p>
+                </div>
               ) : (
                 <div className="divide-y rounded-lg border">
                   {invoice.items.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 p-3 text-sm">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{item.description}</p>
                         <p className="text-muted-foreground text-xs">
                           {item.quantity} × {formatCurrency(item.unit_price)}
                         </p>
                       </div>
-                      <p className="font-medium">{formatCurrency(item.line_total)}</p>
+                      <div className="flex items-center gap-3">
+                        <p className="font-medium">{formatCurrency(item.line_total)}</p>
+                        {invoice.status !== "cancelled" && <DeleteItemButton invoice={invoice} itemId={item.id} />}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -189,6 +198,103 @@ export function InvoiceDetailPage() {
   );
 }
 
+function AddItemDialog({ invoice }: { invoice: Invoice }) {
+  const { success, error } = useToast();
+  const queryClient = useQueryClient();
+  const [description, setDescription] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [unitPrice, setUnitPrice] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      api.post(`/billing/${invoice.id}/items/`, {
+        description,
+        quantity: parseInt(quantity),
+        unit_price: parseFloat(unitPrice).toFixed(2),
+      }),
+    onSuccess: () => {
+      success("Item added");
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      setDescription("");
+      setQuantity("1");
+      setUnitPrice("");
+    },
+    onError: (err) => error(getErrorMessage(err, "Unable to add item.")),
+  });
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <Plus className="size-4" /> Add Item
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Add invoice item</DialogTitle>
+          <DialogDescription>Add a service or charge to this invoice.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Consultation, Lab Test, Medicine" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Quantity</Label>
+              <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Unit Price (KES)</Label>
+              <Input type="number" min={0.01} step="0.01" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} placeholder="0.00" />
+            </div>
+          </div>
+          {description && unitPrice && (
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="flex justify-between">
+                <span>Line Total:</span>
+                <span className="font-medium">{formatCurrency(parseInt(quantity) * parseFloat(unitPrice))}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={() => mutation.mutate()} disabled={!description || !quantity || !unitPrice || mutation.isPending}>
+            {mutation.isPending && <Loader2 className="animate-spin" />}
+            <Plus /> Add Item
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteItemButton({ invoice, itemId }: { invoice: Invoice; itemId: number }) {
+  const { success, error } = useToast();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: () => api.delete(`/billing/${invoice.id}/items/${itemId}/`),
+    onSuccess: () => {
+      success("Item deleted");
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (err) => error(getErrorMessage(err, "Unable to delete item.")),
+  });
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+      className="text-destructive hover:text-destructive"
+    >
+      <Trash2 className="size-4" />
+    </Button>
+  );
+}
+
 function AddPaymentDialog({ invoice }: { invoice: Invoice }) {
   const { success, error } = useToast();
   const queryClient = useQueryClient();
@@ -209,7 +315,7 @@ function AddPaymentDialog({ invoice }: { invoice: Invoice }) {
     mutationFn: () =>
       api.post("/billing/payments/", {
         invoice: invoice.id,
-        amount: Number(amount),
+        amount: parseFloat(amount).toFixed(2),
         method,
         reference,
         notes,
@@ -217,8 +323,8 @@ function AddPaymentDialog({ invoice }: { invoice: Invoice }) {
         policy_number: policyNumber,
         member_name: memberName,
         authorization_number: authorizationNumber,
-        insurance_amount: method === "insurance" ? Number(insuranceAmount) : 0,
-        patient_copay: method === "insurance" ? Number(patientCopay) : 0,
+        insurance_amount: method === "insurance" ? parseFloat(insuranceAmount || "0").toFixed(2) : "0",
+        patient_copay: method === "insurance" ? parseFloat(patientCopay || "0").toFixed(2) : "0",
         mpesa_phone: mpesaPhone,
         mpesa_transaction_code: mpesaCode,
       }),

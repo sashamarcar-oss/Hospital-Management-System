@@ -3,7 +3,7 @@ import { Banknote, Loader2, Plus, Receipt, XCircle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api, getErrorMessage } from "@/lib/api";
-import type { Invoice, Paginated } from "@/lib/types";
+import type { ChargeType, Invoice, Paginated } from "@/lib/types";
 import { PageHeader } from "@/components/common/page-header";
 import { PatientSelect } from "@/components/common/patient-select";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -189,96 +189,239 @@ function NewInvoiceDialog() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [patient, setPatient] = useState<number | null>(null);
-  const [discount, setDiscount] = useState("");
   const [taxRate, setTaxRate] = useState("");
+  const [discount, setDiscount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [cashAmount, setCashAmount] = useState("");
+  const [items, setItems] = useState<{ description: string; quantity: number; unit_price: number; charge_type: number | null }[]>([]);
+
+  const { data: chargeTypes } = useQuery({
+    queryKey: ["charge-types"],
+    queryFn: () => api.get<ChargeType[]>("/billing/charge-types/").then((r) => r.data),
+  });
+
+  const addItem = (chargeType?: ChargeType) => {
+    setItems((prev) => [
+      ...prev,
+      {
+        description: chargeType?.name ?? "",
+        quantity: 1,
+        unit_price: chargeType ? Number(chargeType.default_price) : 0,
+        charge_type: chargeType?.id ?? null,
+      },
+    ]);
+  };
+
+  const removeItem = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index: number, field: string, value: string | number) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+  };
+
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const taxAmount = subtotal * ((Number(taxRate) || 0) / 100);
+  const total = Math.max(0, subtotal - (Number(discount) || 0) + taxAmount);
+
+  const resetForm = () => {
+    setPatient(null);
+    setTaxRate("");
+    setDiscount("");
+    setDueDate("");
+    setNotes("");
+    setItems([]);
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post("/billing/", {
+      if (items.length === 0) throw new Error("Add at least one billable item before creating an invoice.");
+      return api.post("/billing/", {
         patient,
-        discount: discount ? Number(discount) : 0,
-        tax_rate: taxRate ? Number(taxRate) : 0,
+        discount: Number(discount) || 0,
+        tax_rate: Number(taxRate) || 0,
         due_date: dueDate || null,
         notes,
+        items: items.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: Number(item.unit_price.toFixed(2)),
+          charge_type: item.charge_type,
+        })),
       });
-      const cash = Number(cashAmount);
-      if (cash > 0) {
-        await api.post("/billing/payments/", {
-          invoice: res.data.id,
-          amount: cash,
-          method: "cash",
-        });
-      }
-      return res;
     },
     onSuccess: () => {
-      const cash = Number(cashAmount);
-      success(
-        "Invoice created",
-        cash > 0 ? `Cash payment of ${cash.toFixed(2)} recorded.` : "Charge items can be added to it.",
-      );
+      success("Invoice created", "The invoice has been created with the specified line items.");
       setOpen(false);
-      setCashAmount("");
+      resetForm();
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
     onError: (err) => error(getErrorMessage(err, "Unable to create invoice.")),
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
       <DialogTrigger asChild>
         <Button>
           <Plus /> New invoice
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create invoice</DialogTitle>
-          <DialogDescription>Create an invoice for a patient. Charge items are added separately.</DialogDescription>
+          <DialogDescription>Select a patient and add billable items.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Patient</Label>
             <PatientSelect value={patient} onChange={setPatient} />
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Invoice Items</Label>
+              <div className="flex gap-2">
+                {(chargeTypes ?? []).length > 0 && (
+                  <Select onValueChange={(id) => {
+                    const ct = chargeTypes?.find((c) => c.id === Number(id));
+                    if (ct) addItem(ct);
+                  }}>
+                    <SelectTrigger className="h-8 w-auto text-xs">
+                      <SelectValue placeholder="Add from catalog" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {chargeTypes?.map((ct) => (
+                        <SelectItem key={ct.id} value={String(ct.id)}>
+                          {ct.name} — {formatCurrency(ct.default_price)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button type="button" size="sm" variant="outline" onClick={() => addItem()}>
+                  <Plus className="size-3" /> Custom
+                </Button>
+              </div>
+            </div>
+
+            {items.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                <p>No items added yet.</p>
+                <p className="text-xs mt-1">Select a service from the catalog or add a custom item.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {items.map((item, index) => (
+                  <div key={index} className="grid grid-cols-[1fr_80px_120px_120px_32px] items-end gap-2 rounded-lg border p-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Description</Label>
+                      <Input
+                        value={item.description}
+                        onChange={(e) => updateItem(index, "description", e.target.value)}
+                        placeholder="Service description"
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Qty</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Unit Price (KES)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={item.unit_price}
+                        onChange={(e) => updateItem(index, "unit_price", parseFloat(e.target.value) || 0)}
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Subtotal</Label>
+                      <div className="flex h-8 items-center px-3 text-sm font-medium">
+                        {formatCurrency(item.quantity * item.unit_price)}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeItem(index)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    >
+                      <XCircle className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {items.length > 0 && (
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-medium">{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Discount (KES)</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  className="h-8 w-28 text-right"
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tax rate (%)</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(e.target.value)}
+                  className="h-8 w-28 text-right"
+                  placeholder="0"
+                />
+              </div>
+              {Number(taxRate) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span>{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t pt-2 text-base font-medium">
+                <span>Total</span>
+                <span>{formatCurrency(total)}</span>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Discount</Label>
-              <Input type="number" min={0} step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0.00" />
-            </div>
-            <div className="space-y-2">
-              <Label>Tax rate (%)</Label>
-              <Input type="number" min={0} step="0.01" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} placeholder="0" />
-            </div>
             <div className="space-y-2">
               <Label>Due date</Label>
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Notes</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Cash amount</Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={cashAmount}
-              onChange={(e) => setCashAmount(e.target.value)}
-              placeholder="0.00"
-            />
-            <p className="text-xs text-muted-foreground">Optional. Record an upfront cash payment with this invoice.</p>
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={() => mutation.mutate()} disabled={!patient || mutation.isPending}>
+          <Button onClick={() => mutation.mutate()} disabled={!patient || items.length === 0 || mutation.isPending}>
             {mutation.isPending && <Loader2 className="animate-spin" />}
-            <Receipt /> Create
+            <Receipt /> Create invoice
           </Button>
         </DialogFooter>
       </DialogContent>

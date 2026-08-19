@@ -279,21 +279,27 @@ function ReceivePaymentDialog({ open, onClose }: { open: boolean; onClose: () =>
   const { data: patientInvoices, isLoading: loadingInvoices } = useQuery({
     queryKey: ["patient-invoices", patient],
     queryFn: () =>
-      api.get<Paginated<Invoice>>("/billing/", {
-        params: { patient_id: patient, page_size: 50 },
+      api.get<Invoice[]>("/billing/outstanding/", {
+        params: { patient_id: patient },
       }).then((r) => r.data),
     enabled: !!patient,
   });
 
-  const invoices = (patientInvoices?.results ?? []).filter(
-    (inv) => Number(inv.balance) > 0 && inv.status !== "cancelled"
-  );
+  const invoices = patientInvoices ?? [];
 
   const mutation = useMutation({
     mutationFn: () => {
+      const paymentAmount = Number(amount);
+      if (paymentAmount <= 0) {
+        throw new Error("Payment amount must be greater than zero");
+      }
+      if (outstandingBalance > 0 && paymentAmount > outstandingBalance) {
+        throw new Error(`Payment cannot exceed outstanding balance of ${formatCurrency(outstandingBalance)}`);
+      }
+
       const data: Record<string, unknown> = {
         invoice: selectedInvoice!.id,
-        amount: Number(amount),
+        amount: paymentAmount.toFixed(2),
         method,
         reference: reference || undefined,
         notes: notes || undefined,
@@ -306,8 +312,8 @@ function ReceivePaymentDialog({ open, onClose }: { open: boolean; onClose: () =>
       if (method === "insurance") {
         data.insurance_provider = insuranceProvider;
         data.policy_number = policyNumber;
-        data.insurance_amount = Number(insuranceAmount) || 0;
-        data.patient_copay = Number(patientCopay) || 0;
+        data.insurance_amount = insuranceAmount ? insuranceAmount.toFixed(2) : "0.00";
+        data.patient_copay = patientCopay ? patientCopay.toFixed(2) : "0.00";
       }
       return api.post("/billing/payments/", data);
     },

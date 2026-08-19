@@ -12,13 +12,10 @@ def api_exception_handler(exc, context):
     """Translate every backend error into a friendly, consistent API error shape."""
 
     if isinstance(exc, exceptions.ValidationError):
-        return Response(
-            {
-                "detail": "Please check the highlighted fields and try again.",
-                "errors": exc.detail,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        data = exc.detail
+        if not isinstance(data, (dict, list)):
+            data = {"detail": data}
+        return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
     if isinstance(exc, exceptions.AuthenticationFailed):
         return Response(

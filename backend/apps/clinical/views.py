@@ -3,6 +3,8 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.clinical.models import (
@@ -29,6 +31,7 @@ class ConsultationViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "consultations.view"
     write_code = "consultations.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "doctor", "patient", "appointment", "follow_up_date"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__patient_number",
                      "chief_complaint", "clinical_notes"]
@@ -145,6 +148,7 @@ class VitalSignsViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "vitals.view"
     write_code = "vitals.create"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["patient", "consultation"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__patient_number"]
     ordering_fields = ["recorded_at"]
@@ -178,6 +182,7 @@ class DiagnosisViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "consultations.view"
     write_code = "consultations.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["patient", "consultation", "is_primary"]
     search_fields = ["name", "icd_code"]
     ordering_fields = ["id"]
@@ -192,6 +197,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     code = "pharmacy.view"
     create_code = "consultations.prescribe"
     write_code = "consultations.prescribe"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "patient", "doctor", "consultation"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__patient_number"]
     ordering_fields = ["created_at"]
@@ -228,6 +234,7 @@ class ReferralViewSet(viewsets.ModelViewSet):
     serializer_class = ReferralSerializer
     permission_classes = [HasPermission]
     code = "consultations.refer"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "patient", "from_doctor", "to_doctor", "to_department"]
     ordering_fields = ["created_at"]
 

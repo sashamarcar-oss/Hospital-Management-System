@@ -7,6 +7,7 @@ import type { Appointment } from "@/lib/types";
 import {
   addDays,
   addMonths,
+  endOfMonth,
   format,
   isSameDay,
   isSameMonth,
@@ -36,12 +37,13 @@ export function AppointmentCalendarPage() {
 
   const { data: appointments } = useQuery({
     queryKey: ["appointments", "calendar", format(current, "yyyy-MM")],
-    queryFn: () =>
-      api
-        .get<Appointment[]>("/appointments/calendar/", {
-          params: { year: current.getFullYear(), month: current.getMonth() + 1 },
-        })
-        .then((r) => r.data),
+    queryFn: () => {
+      const start = format(startOfMonth(current), "yyyy-MM-dd");
+      const end = format(endOfMonth(current), "yyyy-MM-dd");
+      return api
+        .get<Appointment[]>("/appointments/calendar/", { params: { start, end } })
+        .then((r) => r.data);
+    },
   });
 
   const all = appointments ?? [];

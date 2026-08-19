@@ -75,9 +75,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        uploaded_file = serializer.validated_data.get("file")
         document = serializer.save(uploaded_by=self.request.user)
-        document.content_type = document.file.file.content_type if document.file else ""
-        document.size_bytes = document.file.size if document.file else 0
+        if uploaded_file:
+            document.content_type = getattr(uploaded_file, "content_type", "")
+            document.size_bytes = getattr(uploaded_file, "size", 0)
         document.save(update_fields=["content_type", "size_bytes"])
         from apps.core.services import audit_log
 

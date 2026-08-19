@@ -3,6 +3,8 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.appointments.models import Appointment, Queue
@@ -20,6 +22,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     code = "appointments.view"
     write_code = "appointments.update"
     create_code = "appointments.create"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "priority", "appointment_date", "doctor", "patient", "department"]
     search_fields = [
         "patient__first_name", "patient__last_name", "patient__patient_number",
@@ -52,14 +55,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = serializer.save(created_by=self.request.user)
         self._audit(self.request, AuditLog.ACTION_CREATE, appointment)
         if self.request.user.in_roles("doctor", "receptionist", "admin"):
-            notify(
-                appointment.doctor,
-                "New appointment",
-                f"{appointment.patient.full_name} is scheduled on {appointment.appointment_date} "
-                f"at {appointment.start_time:%H:%M}.",
-                notification_type="appointment",
-                link=f"/appointments",
-            )
+            try:
+                notify(
+                    appointment.doctor,
+                    "New appointment",
+                    f"{appointment.patient.full_name} is scheduled on {appointment.appointment_date} "
+                    f"at {appointment.start_time:%H:%M}.",
+                    notification_type="appointment",
+                    link=f"/appointments",
+                )
+            except Exception:
+                pass
 
     def perform_update(self, serializer):
         previous = {"status": serializer.instance.status}
@@ -78,8 +84,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.status = Appointment.STATUS_CONFIRMED
         appointment.save()
         self._audit(request, AuditLog.ACTION_UPDATE, appointment, "confirmed")
-        notify(appointment.patient.user, "Appointment confirmed", f"Your appointment on {appointment.appointment_date} at {appointment.start_time:%H:%M} is confirmed.",
-               notification_type="appointment", link="/portal") if appointment.patient.user else None
+        if appointment.patient.user:
+            try:
+                notify(appointment.patient.user, "Appointment confirmed", f"Your appointment on {appointment.appointment_date} at {appointment.start_time:%H:%M} is confirmed.",
+                       notification_type="appointment", link="/portal")
+            except Exception:
+                pass
         return Response(AppointmentSerializer(appointment).data)
 
     @transaction.atomic
@@ -138,9 +148,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         active.update(status=Queue.STATUS_CANCELLED)
         self._audit(request, AuditLog.ACTION_UPDATE, appointment, "cancelled, removed from queue")
         if appointment.patient.user:
-            notify(appointment.patient.user, "Appointment cancelled",
-                   f"Your appointment on {appointment.appointment_date} was cancelled.",
-                   notification_type="appointment", link="/portal")
+            try:
+                notify(appointment.patient.user, "Appointment cancelled",
+                       f"Your appointment on {appointment.appointment_date} was cancelled.",
+                       notification_type="appointment", link="/portal")
+            except Exception:
+                pass
         return Response(AppointmentSerializer(appointment).data)
 
     @transaction.atomic
@@ -212,6 +225,7 @@ class QueueViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "queue.view"
     write_code = "queue.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "department", "doctor", "priority", "patient"]
     ordering_fields = ["checked_in_at", "queue_number"]
 

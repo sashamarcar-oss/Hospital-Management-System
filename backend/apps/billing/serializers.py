@@ -13,6 +13,7 @@ from apps.billing.models import (
     PaymentGatewayTransaction,
 )
 from apps.patients.serializers import PatientSummarySerializer
+from apps.patients.models import Patient
 
 
 class ChargeTypeSerializer(serializers.ModelSerializer):
@@ -72,8 +73,23 @@ class PaymentSerializer(serializers.ModelSerializer):
 
         if invoice and invoice.status == Invoice.STATUS_CANCELLED:
             raise serializers.ValidationError({"invoice": "Cannot make payment against a cancelled invoice."})
+        
+        # Invoice must have a positive total to accept payments
+        if invoice and invoice.total <= 0:
+            raise serializers.ValidationError({
+                "invoice": "Payment cannot be recorded because this invoice has no billable items."
+            })
+        
         if invoice and invoice.status == Invoice.STATUS_PAID and (not self.instance):
             raise serializers.ValidationError({"invoice": "This invoice is already fully paid."})
+
+        # Overpayments are supported as customer credit. A payment is valid as long as it is
+        # positive and the invoice is not cancelled or already fully settled for a new payment.
+        if invoice and not self.instance and invoice.balance <= 0 and invoice.total > 0:
+            # If the invoice is already settled, no new payment should be created unless this is
+            # explicitly a credit adjustment workflow. Keep the project’s credit model intact.
+            if invoice.status == Invoice.STATUS_PAID:
+                raise serializers.ValidationError({"invoice": "This invoice is already fully paid."})
 
         method = attrs.get("method", getattr(self.instance, "method", None))
         if method == Payment.METHOD_INSURANCE:
@@ -161,6 +177,65 @@ class PaymentGatewayTransactionSerializer(serializers.ModelSerializer):
         ]
 
 
+class InvoiceCreateItemSerializer(serializers.Serializer):
+    description = serializers.CharField(max_length=255)
+    quantity = serializers.IntegerField(min_value=1, default=1)
+    unit_price = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0"))
+    charge_type = serializers.PrimaryKeyRelatedField(
+        queryset=ChargeType.objects.all(), required=False, allow_null=True,
+    )
+
+
+class InvoiceCreateSerializer(serializers.Serializer):
+    patient = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all())
+    discount = serializers.DecimalField(max_digits=14, decimal_places=2, default=0, required=False)
+    tax_rate = serializers.DecimalField(max_digits=5, decimal_places=2, default=0, required=False)
+    due_date = serializers.DateField(required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    items = InvoiceCreateItemSerializer(many=True)
+
+    def validate_discount(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Discount cannot be negative.")
+        return value
+
+    def validate_items(self, items):
+        if not items:
+            raise serializers.ValidationError("At least one billable item is required.")
+        return items
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items")
+        request = self.context["request"]
+
+        with transaction.atomic():
+            invoice = Invoice.objects.create(
+                patient=validated_data["patient"],
+                discount=validated_data.get("discount", Decimal("0")),
+                tax_rate=validated_data.get("tax_rate", Decimal("0")),
+                due_date=validated_data.get("due_date"),
+                notes=validated_data.get("notes", ""),
+                issued_by=request.user,
+                created_by=request.user,
+            )
+
+            for item_data in items_data:
+                qty = item_data.get("quantity", 1)
+                price = item_data["unit_price"]
+                InvoiceItem.objects.create(
+                    invoice=invoice,
+                    description=item_data["description"],
+                    quantity=qty,
+                    unit_price=price,
+                    charge_type=item_data.get("charge_type"),
+                    created_by=request.user,
+                )
+
+            invoice.recalculate()
+
+        return invoice
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     patient_details = PatientSummarySerializer(source="patient", read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
@@ -189,3 +264,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError("Discount cannot be negative.")
         return value
+
+    def validate(self, attrs):
+        if self.instance is None:
+            if "amount" in self.initial_data:
+                raise serializers.ValidationError(
+                    {"amount": "Invoice amount cannot be set manually. "
+                     "It is calculated automatically from invoice items."}
+                )
+        return attrs

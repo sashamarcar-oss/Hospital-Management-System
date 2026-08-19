@@ -3,6 +3,8 @@ from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.core.models import AuditLog
@@ -17,6 +19,7 @@ class EmergencyVisitViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "emergency.view"
     write_code = "emergency.update"
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "priority", "patient", "assigned_doctor", "mode_of_arrival"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__patient_number",
                      "chief_complaint"]
