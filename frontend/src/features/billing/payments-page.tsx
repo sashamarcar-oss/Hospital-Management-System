@@ -312,8 +312,8 @@ function ReceivePaymentDialog({ open, onClose }: { open: boolean; onClose: () =>
       if (method === "insurance") {
         data.insurance_provider = insuranceProvider;
         data.policy_number = policyNumber;
-        data.insurance_amount = insuranceAmount ? insuranceAmount.toFixed(2) : "0.00";
-        data.patient_copay = patientCopay ? patientCopay.toFixed(2) : "0.00";
+        data.insurance_amount = insuranceAmount ? Number(insuranceAmount).toFixed(2) : "0.00";
+        data.patient_copay = patientCopay ? Number(patientCopay).toFixed(2) : "0.00";
       }
       return api.post("/billing/payments/", data);
     },
