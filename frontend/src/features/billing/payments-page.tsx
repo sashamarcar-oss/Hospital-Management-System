@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, downloadFile, getErrorMessage } from "@/lib/api";
+import { api, downloadFile, getErrorMessage, viewFile } from "@/lib/api";
 import type { Invoice, Paginated, Payment, PaymentStats } from "@/lib/types";
 import { PageHeader } from "@/components/common/page-header";
 import { PatientSelect } from "@/components/common/patient-select";
@@ -512,6 +512,14 @@ function PaymentDetailDialog({ payment, open, onClose }: { payment: Payment; ope
     }
   };
 
+  const handleViewReceipt = async () => {
+    try {
+      await viewFile(`/billing/payments/${payment.id}/receipt-pdf/`);
+    } catch {
+      error("Unable to view receipt.");
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -582,6 +590,9 @@ function PaymentDetailDialog({ payment, open, onClose }: { payment: Payment; ope
           <DialogFooter className="flex-row flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={() => window.open(`/billing/${payment.invoice}`, "_blank")}>
               View Invoice
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleViewReceipt}>
+              View Receipt
             </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadReceipt}>
               <Download className="size-4" /> Download Receipt

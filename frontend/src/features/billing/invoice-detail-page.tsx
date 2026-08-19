@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, Banknote, Loader2, Plus, Trash2, XCircle } from "lucide-react";
+import { ArrowLeft, Banknote, Download, FileText, Loader2, Plus, Trash2, XCircle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, getErrorMessage } from "@/lib/api";
+import { api, downloadFile, getErrorMessage, viewFile } from "@/lib/api";
 import type { Invoice } from "@/lib/types";
 import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -73,6 +73,18 @@ export function InvoiceDetailPage() {
         <Button variant="outline" onClick={() => navigate("/billing")}>
           <ArrowLeft /> Back
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => viewFile(`/billing/${id}/pdf/`)}
+        >
+          <FileText className="size-4" /> View PDF
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => downloadFile(`/billing/${id}/pdf/`, `${invoice.invoice_number}.pdf`)}
+        >
+          <Download className="size-4" /> Download PDF
+        </Button>
         {invoice.status !== "cancelled" && (
           <Button variant="destructive" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}>
             <XCircle /> Cancel invoice
@@ -138,9 +150,20 @@ export function InvoiceDetailPage() {
                           {formatDateTime(p.paid_at)} · {p.received_by_name ?? "-"}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{formatCurrency(p.amount)}</p>
-                        <p className="text-muted-foreground text-xs">{p.status}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="font-medium">{formatCurrency(p.amount)}</p>
+                          <p className="text-muted-foreground text-xs">{p.status}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          title="Download receipt PDF"
+                          onClick={() => downloadFile(`/billing/payments/${p.id}/receipt-pdf/`, `${p.receipt_number}.pdf`)}
+                        >
+                          <Download className="size-3.5" />
+                        </Button>
                       </div>
                     </div>
                   ))}

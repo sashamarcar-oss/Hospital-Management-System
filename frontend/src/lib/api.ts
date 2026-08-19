@@ -380,20 +380,38 @@ export function getFieldErrors(
 }
 
 /**
- * Download a file from a URL.
+ * Fetch a file via the authenticated API client, then trigger a browser
+ * download.  Works with JWT-protected endpoints.
  */
-export function downloadFile(
+export async function downloadFile(
   url: string,
   filename: string
-): void {
+): Promise<void> {
+  const response = await api.get(url, { responseType: "blob" });
+  const blob = new Blob([response.data], {
+    type: response.headers["content-type"] || "application/octet-stream",
+  });
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-
-  a.href = url;
+  a.href = objectUrl;
   a.download = filename;
-
   document.body.appendChild(a);
   a.click();
   a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+/**
+ * Fetch a file via the authenticated API client, then open it in a
+ * new browser tab for viewing (e.g. PDF receipts / invoices).
+ */
+export async function viewFile(url: string): Promise<void> {
+  const response = await api.get(url, { responseType: "blob" });
+  const blob = new Blob([response.data], {
+    type: response.headers["content-type"] || "application/octet-stream",
+  });
+  const objectUrl = URL.createObjectURL(blob);
+  window.open(objectUrl, "_blank");
 }
 
 /**
