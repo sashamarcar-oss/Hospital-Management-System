@@ -388,8 +388,9 @@ export async function downloadFile(
   filename: string
 ): Promise<void> {
   const response = await api.get(url, { responseType: "blob" });
+  const contentType = response.headers["content-type"];
   const blob = new Blob([response.data], {
-    type: response.headers["content-type"] || "application/octet-stream",
+    type: typeof contentType === "string" ? contentType : "application/octet-stream",
   });
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -407,8 +408,9 @@ export async function downloadFile(
  */
 export async function viewFile(url: string): Promise<void> {
   const response = await api.get(url, { responseType: "blob" });
+  const contentType = response.headers["content-type"];
   const blob = new Blob([response.data], {
-    type: response.headers["content-type"] || "application/octet-stream",
+    type: typeof contentType === "string" ? contentType : "application/octet-stream",
   });
   const objectUrl = URL.createObjectURL(blob);
   window.open(objectUrl, "_blank");
