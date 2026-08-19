@@ -1,0 +1,34 @@
+# render.yaml
+# Render Blueprint configuration for the Hospital Management System backend.
+# Deploys as a Python Web Service with PostgreSQL.
+#
+# Render auto-runs the build command on every deploy.
+# The seed_production_catalog command is idempotent and safe to repeat.
+
+services:
+  - type: web
+    name: hospital-management-system
+    runtime: python
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+      python manage.py migrate --noinput
+      python manage.py collectstatic --noinput
+      python manage.py sync_permissions
+      python manage.py seed_production_catalog
+    startCommand: cd backend && gunicorn config.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "config.settings"
+      - key: DEBUG
+        value: "false"
+      # Set the following via the Render dashboard:
+      # - SECRET_KEY
+      # - DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
+      # - CORS_ALLOWED_ORIGINS (add your Vercel frontend URL)
+      # - CSRF_TRUSTED_ORIGINS (add your Vercel frontend URL)
+      # - FRONTEND_URL (your Vercel frontend URL)
+      # - CELERY_BROKER_URL (if using Celery)
+      # - CELERY_RESULT_BACKEND (if using Celery)
