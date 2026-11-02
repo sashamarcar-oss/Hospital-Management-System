@@ -195,12 +195,16 @@ export const BED_STATUS_LABELS: Record<string, string> = {
   occupied: "Occupied",
   reserved: "Reserved",
   maintenance: "Maintenance",
+  cleaning: "Cleaning",
+  out_of_service: "Out of Service",
 };
 export const BED_STATUS_VARIANTS: Record<string, "success" | "destructive" | "warning" | "neutral"> = {
   available: "success",
   occupied: "destructive",
   reserved: "warning",
   maintenance: "neutral",
+  cleaning: "warning",
+  out_of_service: "neutral",
 };
 
 export const ADMISSION_STATUSES = ["admitted", "transferred", "discharged"] as const;

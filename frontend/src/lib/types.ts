@@ -398,6 +398,7 @@ export interface Ward {
   ward_type: string;
   department: number | null;
   department_name: string;
+  capacity: number | null;
   is_active: boolean;
   bed_count: number;
   available_beds: number;
@@ -409,6 +410,7 @@ export interface Room {
   ward_name: string;
   room_number: string;
   room_type: string;
+  capacity: number | null;
 }
 
 export interface Bed {
@@ -417,8 +419,11 @@ export interface Bed {
   room_name: string;
   ward_name: string;
   bed_number: string;
+  bed_type: string;
   status: string;
+  last_cleaned_at: string | null;
   current_patient: PatientSummary | null;
+  current_admission: { id: number; admission_number: string; patient: number; status: string } | null;
 }
 
 export interface Admission {
@@ -812,9 +817,15 @@ export interface KPIs {
   doctors: number;
   nurses: number;
   pending_lab_tests: number;
+  lab_results_awaiting_review: number;
+  pending_radiology: number;
+  radiology_reports_awaiting_review: number;
   pending_prescriptions: number;
   today_revenue: string;
   active_queue: number;
+  patients_in_consultation: number;
+  outstanding_invoices: number;
+  low_stock_medicines: number;
 }
 
 export interface DashboardCharts {

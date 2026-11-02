@@ -48,7 +48,11 @@ import {
 } from "@/lib/constants";
 import { formatDateTime, userFullName } from "@/lib/utils";
 
-function useOptions<T extends { id: number }>(url: string, params: Record<string, unknown> = {}) {
+function useOptions<T extends { id: number }>(
+  url: string,
+  params: Record<string, unknown> = {},
+  enabled = true,
+) {
   const { data } = useQuery({
     queryKey: [url, params],
     queryFn: () =>
@@ -56,6 +60,7 @@ function useOptions<T extends { id: number }>(url: string, params: Record<string
         .get<Paginated<T>>(url, { params: { page_size: 200, ...params } })
         .then((r) => r.data.results),
     staleTime: 60_000,
+    enabled,
   });
   return data ?? [];
 }
@@ -77,7 +82,11 @@ export function AdmissionsPage() {
         .then((r) => r.data),
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admissions"] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["admissions"] });
+    queryClient.invalidateQueries({ queryKey: ["beds"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  };
 
   return (
     <div className="space-y-6">
@@ -174,9 +183,13 @@ function AdmitForm({ onDone }: { onDone: () => void }) {
   const staff = useOptions<Staff>("/staff/");
   const doctors = staff.filter((s) => s.user_details?.role_code === "doctor");
   const departments = useOptions<Department>("/departments/");
-  const wards = useOptions<Ward>("/admissions/wards/");
-  const rooms = useOptions<Room>("/admissions/rooms/", ward ? { ward: Number(ward) } : {});
-  const beds = useOptions<Bed>("/admissions/beds/", ward ? { room__ward: Number(ward) } : {});
+  const wards = useOptions<Ward>("/admissions/wards/", { is_active: true });
+  const rooms = useOptions<Room>("/admissions/rooms/", { ward: Number(ward) }, !!ward);
+  const beds = useOptions<Bed>(
+    "/admissions/beds/",
+    { status: "available", ...(room ? { room: Number(room) } : { room__ward: Number(ward) }) },
+    !!ward,
+  );
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -248,7 +261,7 @@ function AdmitForm({ onDone }: { onDone: () => void }) {
         </div>
         <div className="space-y-2">
           <Label>Room</Label>
-          <Select value={room} onValueChange={setRoom}>
+          <Select value={room} onValueChange={(value) => { setRoom(value); setBed(""); }}>
             <SelectTrigger><SelectValue placeholder="Select room" /></SelectTrigger>
             <SelectContent>
               {rooms.map((r) => (
@@ -262,7 +275,7 @@ function AdmitForm({ onDone }: { onDone: () => void }) {
           <Select value={bed} onValueChange={setBed}>
             <SelectTrigger><SelectValue placeholder="Select bed" /></SelectTrigger>
             <SelectContent>
-              {beds.map((b) => (
+              {beds.filter((b) => b.status === "available").map((b) => (
                 <SelectItem key={b.id} value={String(b.id)}>
                   {b.bed_number} ({b.status})
                 </SelectItem>
@@ -300,9 +313,13 @@ function TransferDialog({ admission, onDone }: { admission: Admission; onDone: (
   const [room, setRoom] = useState<string>("");
   const [bed, setBed] = useState<string>("");
 
-  const wards = useOptions<Ward>("/admissions/wards/");
-  const rooms = useOptions<Room>("/admissions/rooms/", ward ? { ward: Number(ward) } : {});
-  const beds = useOptions<Bed>("/admissions/beds/", ward ? { room__ward: Number(ward) } : {});
+  const wards = useOptions<Ward>("/admissions/wards/", { is_active: true });
+  const rooms = useOptions<Room>("/admissions/rooms/", { ward: Number(ward) }, !!ward);
+  const beds = useOptions<Bed>(
+    "/admissions/beds/",
+    { status: "available", ...(room ? { room: Number(room) } : { room__ward: Number(ward) }) },
+    !!ward,
+  );
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -347,7 +364,7 @@ function TransferDialog({ admission, onDone }: { admission: Admission; onDone: (
           </div>
           <div className="space-y-2">
             <Label>Room</Label>
-            <Select value={room} onValueChange={setRoom}>
+            <Select value={room} onValueChange={(value) => { setRoom(value); setBed(""); }}>
               <SelectTrigger><SelectValue placeholder="Select room" /></SelectTrigger>
               <SelectContent>
                 {rooms.map((r) => (
@@ -361,7 +378,7 @@ function TransferDialog({ admission, onDone }: { admission: Admission; onDone: (
             <Select value={bed} onValueChange={setBed}>
               <SelectTrigger><SelectValue placeholder="Select bed" /></SelectTrigger>
               <SelectContent>
-                {beds.map((b) => (
+                {beds.filter((b) => b.status === "available").map((b) => (
                   <SelectItem key={b.id} value={String(b.id)}>
                     {b.bed_number} ({b.status})
                   </SelectItem>

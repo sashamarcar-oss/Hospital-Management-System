@@ -11,7 +11,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <Activity className="size-6" />
           </div>
           <div>
-            <p className="text-lg font-semibold">Mimosa Hospital</p>
+            <p className="text-lg font-semibold">Radiant Hospital</p>
             <p className="text-sm opacity-80">Hospital Management System</p>
           </div>
         </div>
@@ -25,7 +25,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           </p>
         </div>
         <p className="text-xs opacity-70">
-          © {new Date().getFullYear()} Mimosa Hospital. Authorized access only.
+          © {new Date().getFullYear()} Radiant Hospital. Authorized access only.
         </p>
       </div>
       <div className="flex flex-1 items-center justify-center p-6">
@@ -35,7 +35,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
               <Activity className="size-6" />
             </div>
             <div>
-              <p className="font-semibold">Mimosa Hospital</p>
+              <p className="font-semibold">Radiant Hospital</p>
               <p className="text-muted-foreground text-xs">Hospital Management System</p>
             </div>
           </div>

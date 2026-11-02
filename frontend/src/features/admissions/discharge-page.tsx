@@ -59,7 +59,12 @@ export function DischargePage() {
   });
 
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["discharges"] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["discharges"] });
+    queryClient.invalidateQueries({ queryKey: ["admissions"] });
+    queryClient.invalidateQueries({ queryKey: ["beds"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  };
 
   return (
     <div className="space-y-6">

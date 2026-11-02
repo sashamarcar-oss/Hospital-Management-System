@@ -173,7 +173,7 @@ export function AppointmentListPage() {
                 <CheckCircle2 /> Confirm
               </DropdownMenuItem>
             )}
-            {(a.status === "scheduled" || a.status === "confirmed") && can("appointments.check_in") && (
+            {(a.status === "scheduled" || a.status === "confirmed") && can("appointments.checkin") && (
               <DropdownMenuItem onClick={() => checkInMutation.mutate(a.id)}>
                 <LogIn /> Check in
               </DropdownMenuItem>

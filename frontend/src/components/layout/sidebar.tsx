@@ -15,7 +15,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <Activity className="size-5" />
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold">Mimosa Hospital</p>
+          <p className="text-sm font-semibold">Radiant Hospital</p>
           <p className="text-muted-foreground text-xs">Hospital Management</p>
         </div>
       </div>

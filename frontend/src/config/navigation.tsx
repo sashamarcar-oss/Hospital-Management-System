@@ -61,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Consultations", to: "/consultations", icon: Stethoscope, permission: "consultations.view" },
       { label: "Vital Signs", to: "/vitals", icon: HeartPulse, permission: "vitals.view" },
       { label: "Admissions", to: "/admissions", icon: BedDouble, permission: "admissions.view" },
+      { label: "Beds, Wards & Rooms", to: "/admissions/beds", icon: Building2, permission: "admissions.view" },
     ],
   },
   {

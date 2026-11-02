@@ -33,7 +33,8 @@ export function Topbar() {
   const { data: unreadCount } = useQuery({
     queryKey: ["notifications", "unread_count"],
     queryFn: () => api.get<{ count: number }>("/core/notifications/unread_count/").then((r) => r.data.count),
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: recentNotifications } = useQuery({
@@ -42,7 +43,8 @@ export function Topbar() {
       api
         .get<Paginated<Notification>>("/core/notifications/", { params: { page_size: 6 } })
         .then((r) => r.data.results),
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
 
   const markAllRead = useMutation({

@@ -33,6 +33,8 @@ export function QueuePage() {
   const { data: queues, isLoading, refetch } = useQuery({
     queryKey: ["queue", "active"],
     queryFn: () => api.get<QueueEntry[]>("/appointments/queue/active/").then((r) => r.data),
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
 
   const invalidate = () => {

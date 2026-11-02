@@ -17,6 +17,8 @@ export function NotificationsPage() {
     queryKey: ["notifications"],
     queryFn: () =>
       api.get<Paginated<Notification>>("/core/notifications/").then((r) => r.data),
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
   const notifications = data?.results;
 

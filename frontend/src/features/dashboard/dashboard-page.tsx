@@ -17,6 +17,9 @@ import {
   Microscope,
   Loader2,
   Activity,
+  ScanLine,
+  CircleDollarSign,
+  AlertTriangle,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -130,7 +133,12 @@ export function DashboardPage() {
           <StatCard title="Doctors" value={kpis.doctors} icon={Stethoscope} tone="blue" />
           <StatCard title="Nurses" value={kpis.nurses} icon={UserRound} tone="slate" />
           <StatCard title="Pending Lab Tests" value={kpis.pending_lab_tests} icon={FlaskConical} tone="amber" />
+          <StatCard title="Lab Results to Review" value={kpis.lab_results_awaiting_review} icon={FlaskConical} tone="blue" />
+          <StatCard title="Pending Radiology" value={kpis.pending_radiology} icon={ScanLine} tone="amber" />
+          <StatCard title="Radiology Reports to Review" value={kpis.radiology_reports_awaiting_review} icon={ScanLine} tone="violet" />
           <StatCard title="Pending Prescriptions" value={kpis.pending_prescriptions} icon={Pill} tone="violet" />
+          <StatCard title="Outstanding Invoices" value={kpis.outstanding_invoices} icon={CircleDollarSign} tone="amber" />
+          <StatCard title="Low Stock Medicines" value={kpis.low_stock_medicines} icon={AlertTriangle} tone="red" />
           <StatCard title="Today's Revenue" value={formatCurrency(kpis.today_revenue)} icon={Banknote} tone="teal" />
         </div>
       ) : null}
