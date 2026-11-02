@@ -3,12 +3,13 @@ from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.clinical.models import Prescription, PrescriptionItem
 from apps.core.models import AuditLog
+from apps.core.filters import LatestCreatedOrderingFilter
 from apps.core.services import audit_log, notify
 from apps.pharmacy.models import (
     Medicine,
@@ -32,7 +33,7 @@ class MedicineCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "pharmacy.view"
     pagination_class = None
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     search_fields = ["name"]
 
 
@@ -41,7 +42,7 @@ class MedicineViewSet(viewsets.ModelViewSet):
     serializer_class = MedicineSerializer
     permission_classes = [HasPermission]
     code = "pharmacy.view"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     search_fields = ["name", "generic_name", "brand_name", "manufacturer"]
     filterset_fields = ["category", "is_active", "requires_prescription"]
     ordering_fields = ["name", "created_at"]
@@ -174,6 +175,12 @@ class DispenseView(viewsets.ViewSet):
         if prescription.status in (Prescription.STATUS_DISPENSED, Prescription.STATUS_CANCELLED):
             return Response({"detail": "This prescription cannot be dispensed."}, status=400)
 
+        if not isinstance(items, list) or not items:
+            return Response({"detail": "At least one prescription item is required."}, status=400)
+        item_ids = [row.get("item") for row in items if isinstance(row, dict)]
+        if len(item_ids) != len(items) or len(set(item_ids)) != len(item_ids):
+            return Response({"detail": "Each prescription item must appear once per dispense."}, status=400)
+
         for item_data in items:
             item_id = item_data.get("item")
             qty = int(item_data.get("quantity", 0))
@@ -208,7 +215,7 @@ class DispenseView(viewsets.ViewSet):
     def _deduct_medicine(self, medicine, quantity, user, reference):
         today = timezone.now().date()
         remaining = quantity
-        batches = medicine.batches.exclude(quantity=0).filter(models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gte=today)).order_by("expiry_date", "id")
+        batches = medicine.batches.select_for_update().exclude(quantity=0).filter(models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gte=today)).order_by("expiry_date", "id")
         for batch in batches:
             if remaining <= 0:
                 break
@@ -232,19 +239,21 @@ class DispenseView(viewsets.ViewSet):
 
     def _create_billing_charge(self, prescription):
         """Generate medication charges on the patient's open invoice."""
-        try:
-            from apps.billing.models import Invoice, InvoiceItem
-            from apps.billing.utils import get_or_create_open_invoice
+        from apps.billing.models import InvoiceItem
+        from apps.billing.utils import get_or_create_open_invoice
 
-            invoice = get_or_create_open_invoice(prescription.patient, created_by=prescription.dispensed_by)
-            for item in prescription.items.all():
-                if item.dispensed_quantity and not hasattr(item, "billing_item"):
+        invoice = get_or_create_open_invoice(prescription.patient, created_by=prescription.dispensed_by)
+        for item in prescription.items.all():
+            if item.dispensed_quantity:
+                billing_item = getattr(item, "billing_item", None)
+                if billing_item:
+                    billing_item.quantity = item.dispensed_quantity
+                    billing_item.save(update_fields=["quantity", "line_total"])
+                else:
                     InvoiceItem.objects.create(
                         invoice=invoice,
                         description=f"{item.medicine.name} ({item.dosage})",
                         quantity=item.dispensed_quantity,
                         unit_price=item.medicine.selling_price,
-                        medicine_item=item,
+                        prescription_item=item,
                     )
-        except Exception:
-            pass

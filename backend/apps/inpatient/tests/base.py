@@ -1,6 +1,7 @@
 """Shared fixtures and helpers for inpatient/nursing/ICU tests."""
 
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -42,6 +43,7 @@ def create_user(username, role_code, permissions=(), **kwargs):
     return user
 
 
+@override_settings(SECURE_SSL_REDIRECT=False)
 class InpatientBaseTestCase(APITestCase):
     def setUp(self):
         self.department = Department.objects.create(name="General Medicine")

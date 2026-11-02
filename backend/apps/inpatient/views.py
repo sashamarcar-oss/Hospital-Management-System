@@ -121,7 +121,8 @@ class BedViewSet(viewsets.ModelViewSet):
     permission_classes = [InpatientActionPermission]
     code = "inpatient.view"
     write_code = "inpatient.manage_beds"
-    filterset_fields = ["status", "room", "room__ward"]
+    filterset_fields = ["status", "room", "room__ward", "bed_type",
+                        "assignment_history__admission__patient"]
 
     def get_queryset(self):
         return super().get_queryset().filter(room__ward__is_active=True)
@@ -132,9 +133,21 @@ class BedViewSet(viewsets.ModelViewSet):
         result = []
         for ward in Ward.objects.filter(is_active=True):
             beds = Bed.objects.filter(room__ward=ward).select_related("room")
+            rooms = []
+            for room in ward.rooms.all():
+                room_beds = beds.filter(room=room)
+                rooms.append({
+                    "id": room.id,
+                    "room_number": room.room_number,
+                    "room_type": room.room_type,
+                    "capacity": room.capacity,
+                    "beds": BedSerializer(room_beds, many=True).data,
+                })
             result.append({
-                "ward": {"id": ward.id, "name": ward.name, "type": ward.ward_type},
+                "ward": {"id": ward.id, "name": ward.name, "type": ward.ward_type,
+                         "capacity": ward.capacity},
                 "beds": BedSerializer(beds, many=True).data,
+                "rooms": rooms,
             })
         return Response(result)
 
@@ -282,6 +295,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return _role_scoped_admissions(self.request.user)
 
+    @transaction.atomic
     def perform_create(self, serializer):
         admission = serializer.save(created_by=self.request.user)
         if admission.bed_id:
@@ -291,7 +305,6 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                     expected_discharge_date=admission.expected_discharge_date,
                 )
             except BedManagementError as exc:
-                admission.soft_delete(self.request.user)
                 raise ValidationError({"bed": str(exc)})
         audit_log(self.request.user, AuditLog.ACTION_CREATE, "inpatient.admission",
                   record=str(admission.patient), object_id=admission.id,
@@ -718,9 +731,9 @@ class DischargeViewSet(viewsets.ModelViewSet):
             from apps.inpatient.services import BedManagementError, release_bed
 
             try:
-                release_bed(admission, request.user, reason="Discharged")
-            except BedManagementError:
-                pass
+                release_bed(admission, request.user, reason="Discharged", set_cleaning=True)
+            except BedManagementError as exc:
+                raise ValidationError({"bed": str(exc)})
 
         audit_log(request.user, AuditLog.ACTION_CREATE, "inpatient.discharge",
                   record=str(admission.patient), object_id=discharge.id,
@@ -798,6 +811,9 @@ class InpatientStatsView(APIView):
             "available_beds": beds.filter(status=Bed.STATUS_AVAILABLE).count(),
             "occupied_beds": beds.filter(status=Bed.STATUS_OCCUPIED).count(),
             "reserved_beds": beds.filter(status=Bed.STATUS_RESERVED).count(),
+            "unavailable_beds": beds.filter(status__in=[
+                Bed.STATUS_CLEANING, Bed.STATUS_MAINTENANCE, Bed.STATUS_OUT_OF_SERVICE,
+            ]).count(),
             "admitted_patients": admitted.count(),
             "active_icu_patients": admitted.filter(ward__ward_type=Ward.TYPE_ICU).count(),
             "pending_handovers": NursingHandover.objects.filter(handover_date=today).count(),

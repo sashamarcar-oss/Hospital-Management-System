@@ -3,11 +3,12 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.core.models import AuditLog
+from apps.core.filters import LatestCreatedOrderingFilter
 from apps.core.services import audit_log
 from apps.radiology.models import RadiologyReport, RadiologyRequest
 from apps.radiology.serializers import RadiologyReportSerializer, RadiologyRequestSerializer
@@ -19,7 +20,7 @@ class RadiologyRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "radiology.view"
     write_code = "radiology.update"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     filterset_fields = ["status", "priority", "procedure_type", "patient", "doctor"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__patient_number", "body_part"]
     ordering_fields = ["requested_at"]
@@ -81,7 +82,7 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "radiology.view"
     write_code = "radiology.update"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     filterset_fields = ["request"]
 
     def perform_create(self, serializer):

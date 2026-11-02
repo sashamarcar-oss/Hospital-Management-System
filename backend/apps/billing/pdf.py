@@ -121,7 +121,7 @@ def build_receipt_pdf(payment) -> io.BytesIO:
     styles = _header_styles()
     elements = []
 
-    elements.append(Paragraph("MIMOSA HOSPITAL", styles["Title"]))
+    elements.append(Paragraph("RADIANT HOSPITAL", styles["Title"]))
     elements.append(Paragraph("PAYMENT RECEIPT", styles["Heading2"]))
     elements.append(Spacer(1, 8))
 

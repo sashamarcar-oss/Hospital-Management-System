@@ -15,6 +15,8 @@ from apps.clinical.models import Diagnosis, Prescription, VitalSigns
 from apps.inpatient.models import Admission, Bed
 from apps.laboratory.models import LabRequest
 from apps.patients.models import Patient
+from apps.radiology.models import RadiologyRequest
+from apps.pharmacy.models import Medicine
 
 
 class DashboardAccessView(APIView):
@@ -49,6 +51,16 @@ class KPIsView(DashboardAccessView):
                 status__in=[LabRequest.STATUS_REQUESTED, LabRequest.STATUS_SAMPLE_COLLECTED,
                             LabRequest.STATUS_PROCESSING]
             ).count(),
+            "lab_results_awaiting_review": LabRequest.objects.filter(
+                status=LabRequest.STATUS_COMPLETED
+            ).count(),
+            "pending_radiology": RadiologyRequest.objects.filter(
+                status__in=[RadiologyRequest.STATUS_REQUESTED, RadiologyRequest.STATUS_QUEUED,
+                            RadiologyRequest.STATUS_IN_PROGRESS]
+            ).count(),
+            "radiology_reports_awaiting_review": RadiologyRequest.objects.filter(
+                status=RadiologyRequest.STATUS_COMPLETED
+            ).count(),
             "pending_prescriptions": Prescription.objects.filter(
                 status__in=["active", "partially_dispensed"]
             ).count(),
@@ -56,6 +68,16 @@ class KPIsView(DashboardAccessView):
             "active_queue": Queue.objects.filter(
                 status__in=[Queue.STATUS_WAITING, Queue.STATUS_IN_CONSULTATION]
             ).count(),
+            "patients_in_consultation": Queue.objects.filter(
+                status=Queue.STATUS_IN_CONSULTATION
+            ).count(),
+            "outstanding_invoices": Invoice.objects.filter(
+                balance__gt=0
+            ).exclude(status=Invoice.STATUS_CANCELLED).count(),
+            "low_stock_medicines": sum(
+                1 for medicine in Medicine.objects.filter(is_active=True).prefetch_related("batches")
+                if sum(batch.quantity for batch in medicine.batches.all()) <= medicine.reorder_level
+            ),
         })
 
 

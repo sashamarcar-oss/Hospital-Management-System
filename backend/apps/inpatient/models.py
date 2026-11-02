@@ -33,6 +33,7 @@ class Ward(BaseModel):
     department = models.ForeignKey(
         "departments.Department", null=True, blank=True, on_delete=models.SET_NULL, related_name="wards"
     )
+    capacity = models.PositiveSmallIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -59,6 +60,7 @@ class Room(BaseModel):
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name="rooms")
     room_number = models.CharField(max_length=32)
     room_type = models.CharField(max_length=64, default="general")
+    capacity = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["room_number"]
@@ -69,6 +71,21 @@ class Room(BaseModel):
 
 
 class Bed(BaseModel):
+    TYPE_STANDARD = "standard"
+    TYPE_PRIVATE = "private"
+    TYPE_ICU = "icu"
+    TYPE_MATERNITY = "maternity"
+    TYPE_PEDIATRIC = "pediatric"
+    TYPE_ISOLATION = "isolation"
+    TYPE_CHOICES = [
+        (TYPE_STANDARD, "Standard"),
+        (TYPE_PRIVATE, "Private"),
+        (TYPE_ICU, "ICU"),
+        (TYPE_MATERNITY, "Maternity"),
+        (TYPE_PEDIATRIC, "Pediatric"),
+        (TYPE_ISOLATION, "Isolation"),
+    ]
+
     STATUS_AVAILABLE = "available"
     STATUS_OCCUPIED = "occupied"
     STATUS_RESERVED = "reserved"
@@ -87,6 +104,7 @@ class Bed(BaseModel):
 
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="beds")
     bed_number = models.CharField(max_length=32)
+    bed_type = models.CharField(max_length=24, choices=TYPE_CHOICES, default=TYPE_STANDARD)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_AVAILABLE)
     notes = models.TextField(blank=True, help_text="Bed-specific notes (equipment, accessibility, etc.).")
     last_cleaned_at = models.DateTimeField(null=True, blank=True)
@@ -158,7 +176,6 @@ class Admission(BaseModel):
         if not self.admission_number:
             self.admission_number = self._generate_number()
         super().save(*args, **kwargs)
-        self._sync_bed()
 
     def _generate_number(self):
         year = timezone.now().year

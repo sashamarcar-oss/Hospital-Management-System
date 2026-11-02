@@ -7,11 +7,12 @@ from openpyxl.styles import Font
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission, IsPatientAccountOwner
 from apps.core.models import AuditLog
+from apps.core.filters import LatestCreatedOrderingFilter
 from apps.core.services import audit_log
 from apps.patients.models import Patient
 from apps.patients.serializers import PatientSerializer, PatientSummarySerializer
@@ -23,7 +24,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission, IsPatientAccountOwner]
     code = "patients.view"
     write_code = "patients.update"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     search_fields = [
         "patient_number", "first_name", "middle_name", "last_name",
         "phone", "email", "national_id", "insurance_number",

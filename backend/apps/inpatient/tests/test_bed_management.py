@@ -2,6 +2,7 @@
 
 from django.utils import timezone
 
+from apps.billing.models import ChargeType, InvoiceItem
 from apps.core.models import AuditLog, Notification
 from apps.inpatient.models import Admission, Bed, BedAssignment
 from apps.inpatient.tests.base import InpatientBaseTestCase
@@ -217,6 +218,70 @@ class BedBoardTests(InpatientBaseTestCase):
         self.assertIn(self.icu_ward.id, wards)
         beds = {b["id"] for item in wards.values() for b in item["beds"]}
         self.assertIn(self.bed.id, beds)
+
+
+class FacilityCapacityTests(InpatientBaseTestCase):
+    def test_facility_capacity_is_enforced_when_registering_beds(self):
+        self._auth(self.admin)
+        ward = self.client.post(
+            "/api/admissions/wards/",
+            {"name": "Capacity Ward", "code": "CAP", "ward_type": "general", "capacity": 1},
+            format="json",
+        )
+        self.assertEqual(ward.status_code, 201, ward.content)
+        room = self.client.post(
+            "/api/admissions/rooms/",
+            {"ward": ward.data["id"], "room_number": "201", "room_type": "general", "capacity": 1},
+            format="json",
+        )
+        self.assertEqual(room.status_code, 201, room.content)
+        bed = self.client.post(
+            "/api/admissions/beds/",
+            {"room": room.data["id"], "bed_number": "A", "bed_type": "standard"},
+            format="json",
+        )
+        self.assertEqual(bed.status_code, 201, bed.content)
+        self.assertEqual(bed.data["status"], Bed.STATUS_AVAILABLE)
+        overflow = self.client.post(
+            "/api/admissions/beds/",
+            {"room": room.data["id"], "bed_number": "B", "bed_type": "standard"},
+            format="json",
+        )
+        self.assertEqual(overflow.status_code, 400)
+
+    def test_configured_room_and_bed_charges_are_idempotent(self):
+        room_charge = ChargeType.objects.create(
+            name="General room", code="ROOM_GENERAL", category="room", default_price="1200.00"
+        )
+        bed_charge = ChargeType.objects.create(
+            name="Standard bed", code="BED_STANDARD", category="bed", default_price="300.00"
+        )
+        self._auth(self.nurse)
+        response = self._assign(self.admission1, self.bed, self.nurse)
+        self.assertEqual(response.status_code, 201, response.content)
+        assignment = BedAssignment.objects.get(admission=self.admission1, released_at__isnull=True)
+        from apps.inpatient.services import _create_configured_bed_charge
+
+        _create_configured_bed_charge(assignment, self.nurse)
+        charges = InvoiceItem.objects.filter(bed_assignment=assignment)
+        self.assertEqual(charges.count(), 2)
+        self.assertSetEqual(set(charges.values_list("charge_type_id", flat=True)), {room_charge.id, bed_charge.id})
+
+    def test_discharge_closes_assignment_and_starts_cleaning(self):
+        self._auth(self.nurse)
+        self.assertEqual(self._assign(self.admission1, self.bed, self.nurse).status_code, 201)
+        assignment = BedAssignment.objects.get(admission=self.admission1, released_at__isnull=True)
+        self._auth(self.admin)
+        response = self.client.post(
+            "/api/admissions/discharges/",
+            {"admission": self.admission1.id, "discharge_type": "home"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        assignment.refresh_from_db()
+        self.bed.refresh_from_db()
+        self.assertIsNotNone(assignment.released_at)
+        self.assertEqual(self.bed.status, Bed.STATUS_CLEANING)
 
 
 class BedAssignmentAuditTests(InpatientBaseTestCase):

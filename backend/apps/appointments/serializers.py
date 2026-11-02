@@ -27,6 +27,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         doctor = attrs.get("doctor", getattr(self.instance, "doctor", None))
         department = attrs.get("department", getattr(self.instance, "department", None))
+        patient = attrs.get("patient", getattr(self.instance, "patient", None))
+        appointment_date = attrs.get("appointment_date", getattr(self.instance, "appointment_date", None))
+        start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
+        end_time = attrs.get("end_time", getattr(self.instance, "end_time", None))
 
         if doctor and not doctor.is_active:
             raise serializers.ValidationError({"doctor": "Select an active doctor."})
@@ -42,6 +46,30 @@ class AppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"doctor": "Select a doctor assigned to the selected department."}
             )
+        if doctor and appointment_date and start_time and end_time:
+            conflicts = Appointment.objects.filter(
+                doctor=doctor,
+                appointment_date=appointment_date,
+                status__in=[Appointment.STATUS_SCHEDULED, Appointment.STATUS_CONFIRMED,
+                            Appointment.STATUS_CHECKED_IN],
+                start_time__lt=end_time,
+                end_time__gt=start_time,
+            )
+            if self.instance:
+                conflicts = conflicts.exclude(pk=self.instance.pk)
+            if conflicts.exists():
+                raise serializers.ValidationError({"doctor": "This clinician already has an overlapping appointment."})
+        if patient and appointment_date and start_time and end_time:
+            conflicts = Appointment.objects.filter(
+                patient=patient, appointment_date=appointment_date,
+                status__in=[Appointment.STATUS_SCHEDULED, Appointment.STATUS_CONFIRMED,
+                            Appointment.STATUS_CHECKED_IN],
+                start_time__lt=end_time, end_time__gt=start_time,
+            )
+            if self.instance:
+                conflicts = conflicts.exclude(pk=self.instance.pk)
+            if conflicts.exists():
+                raise serializers.ValidationError({"patient": "This patient already has an overlapping appointment."})
         return attrs
 
     def get_queue_entry(self, obj):

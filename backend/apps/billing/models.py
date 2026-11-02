@@ -17,6 +17,7 @@ class ChargeType(BaseModel):
         ("medication", "Medication"),
         ("procedure", "Procedure"),
         ("admission", "Admission"),
+        ("room", "Room Charge"),
         ("bed", "Bed Charge"),
         ("service", "Other Service"),
     ]
@@ -176,10 +177,23 @@ class InvoiceItem(BaseModel):
     admission = models.ForeignKey(
         "inpatient.Admission", null=True, blank=True, on_delete=models.SET_NULL, related_name="billing_items"
     )
+    bed_assignment = models.ForeignKey(
+        "inpatient.BedAssignment", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="billing_items",
+    )
     prescription_item = models.OneToOneField(
         "clinical.PrescriptionItem", null=True, blank=True, on_delete=models.SET_NULL,
         related_name="billing_item",
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["bed_assignment", "charge_type"],
+                condition=models.Q(bed_assignment__isnull=False, charge_type__isnull=False),
+                name="uniq_bed_assignment_charge_type",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         self.line_total = self.quantity * self.unit_price

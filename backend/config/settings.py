@@ -221,7 +221,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = env("TIME_ZONE", default="Africa/Nairobi")
 
 USE_I18N = True
 
@@ -260,7 +260,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
-        "rest_framework.filters.OrderingFilter",
+        "apps.core.filters.LatestCreatedOrderingFilter",
     ),
 
     "DEFAULT_PAGINATION_CLASS": (

@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
@@ -21,6 +21,7 @@ from apps.billing.serializers import (
     PaymentSerializer,
 )
 from apps.core.models import AuditLog
+from apps.core.filters import LatestCreatedOrderingFilter
 from apps.core.services import audit_log, notify
 
 
@@ -30,7 +31,7 @@ class ChargeTypeViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "billing.view"
     write_code = "billing.update"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     search_fields = ["name", "code"]
     filterset_fields = ["category", "is_active"]
     pagination_class = None
@@ -82,7 +83,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "billing.view"
     write_code = "billing.update"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     filterset_fields = ["status", "patient", "insurance_claim"]
     search_fields = ["invoice_number", "patient__first_name", "patient__last_name", "patient__patient_number"]
     ordering_fields = ["issued_at", "total", "balance"]
@@ -189,7 +190,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     code = "payments.view"
     write_code = "payments.receive_payment"
     create_code = "payments.receive_payment"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     filterset_fields = ["invoice", "method", "status", "invoice__patient"]
     search_fields = [
         "payment_number", "receipt_number", "reference",
@@ -466,7 +467,7 @@ class PaymentGatewayTransactionViewSet(viewsets.ModelViewSet):
     code = "payments.view"
     write_code = "payments.receive_payment"
     create_code = "payments.receive_payment"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     filterset_fields = ["provider", "reconciliation_status", "payment"]
     search_fields = ["provider_reference", "payment__receipt_number"]
     ordering_fields = ["created_at", "provider_amount"]

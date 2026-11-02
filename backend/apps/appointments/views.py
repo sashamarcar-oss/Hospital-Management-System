@@ -3,26 +3,27 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.permissions import HasPermission
 from apps.appointments.models import Appointment, Queue
 from apps.appointments.serializers import AppointmentSerializer, QueueSerializer
 from apps.core.models import AuditLog
+from apps.core.filters import LatestCreatedOrderingFilter
 from apps.core.services import audit_log, notify
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.select_related(
         "patient", "doctor", "department"
-    ).all()
+    ).order_by("-created_at", "-id")
     serializer_class = AppointmentSerializer
     permission_classes = [HasPermission]
     code = "appointments.view"
     write_code = "appointments.update"
     create_code = "appointments.create"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
     filterset_fields = ["status", "priority", "appointment_date", "doctor", "patient", "department"]
     search_fields = [
         "patient__first_name", "patient__last_name", "patient__patient_number",
@@ -96,31 +97,45 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def checkin(self, request, pk=None):
         """Check a patient in and generate a queue number for today's queue."""
-        appointment = self.get_object()
+        # Lock the appointment so concurrent/retried check-ins share one queue row.
+        appointment = Appointment.objects.select_for_update().get(pk=self.get_object().pk)
         if appointment.status in (Appointment.STATUS_COMPLETED, Appointment.STATUS_CANCELLED, Appointment.STATUS_NO_SHOW):
             return Response({"detail": f"Cannot check in an appointment with status {appointment.status}."},
                             status=400)
-        if appointment.status != Appointment.STATUS_CHECKED_IN:
+        newly_checked_in = appointment.status != Appointment.STATUS_CHECKED_IN
+        if newly_checked_in:
             appointment.status = Appointment.STATUS_CHECKED_IN
             appointment.checked_in_at = timezone.now()
             appointment.save()
-            queue = Queue.objects.create(
-                patient=appointment.patient,
-                appointment=appointment,
-                department=appointment.department,
-                doctor=appointment.doctor,
-                priority=appointment.priority,
-                checked_in_at=appointment.checked_in_at,
-            )
+        queue, created = Queue.objects.get_or_create(
+            appointment=appointment,
+            defaults={
+                "patient": appointment.patient,
+                "department": appointment.department,
+                "doctor": appointment.doctor,
+                "priority": appointment.priority,
+                "checked_in_at": appointment.checked_in_at,
+            },
+        )
+        if created:
             queue.queue_number = queue.generate_number()
             queue.save(update_fields=["queue_number"])
-            self._audit(request, AuditLog.ACTION_CREATE, appointment, f"checked in, queue {queue.queue_number}")
-            return Response({
-                "detail": "Patient checked in.",
-                "queue": QueueSerializer(queue).data,
-                "appointment": AppointmentSerializer(appointment).data,
-            })
-        return Response(AppointmentSerializer(appointment).data)
+        if created or newly_checked_in:
+            self._audit(request, AuditLog.ACTION_CREATE if created else AuditLog.ACTION_UPDATE, appointment, f"checked in, queue {queue.queue_number}")
+            notify(
+                appointment.doctor,
+                "Patient checked in",
+                f"{appointment.patient.full_name} is ready in queue {queue.queue_number}.",
+                notification_type="appointment",
+                link="/queue",
+                related_module="appointments",
+                related_object_id=appointment.id,
+            )
+        return Response({
+            "detail": "Patient checked in.",
+            "queue": QueueSerializer(queue).data,
+            "appointment": AppointmentSerializer(appointment).data,
+        })
 
     @transaction.atomic
     @action(detail=True, methods=["post"])
@@ -130,7 +145,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.status = Appointment.STATUS_COMPLETED
         appointment.completed_at = timezone.now()
         appointment.save()
-        appointment.queue_entries.filter(status=Queue.STATUS_IN_CONSULTATION).update(status=Queue.STATUS_COMPLETED, completed_at=timezone.now())
+        appointment.queue_entries.filter(
+            status__in=[Queue.STATUS_WAITING, Queue.STATUS_IN_CONSULTATION]
+        ).update(status=Queue.STATUS_COMPLETED, completed_at=timezone.now())
         self._audit(request, AuditLog.ACTION_UPDATE, appointment, "completed")
         return Response(AppointmentSerializer(appointment).data)
 
@@ -225,7 +242,8 @@ class QueueViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     code = "queue.view"
     write_code = "queue.update"
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, LatestCreatedOrderingFilter]
+    ordering = ["-priority", "checked_in_at", "id"]
     filterset_fields = ["status", "department", "doctor", "priority", "patient"]
     ordering_fields = ["checked_in_at", "queue_number"]
 

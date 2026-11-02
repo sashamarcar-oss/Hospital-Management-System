@@ -28,7 +28,14 @@ class WardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ward
         fields = ["id", "name", "code", "ward_type", "department", "department_name",
-                  "is_active", "bed_count", "available_beds"]
+                  "capacity", "is_active", "bed_count", "available_beds"]
+
+    def validate_capacity(self, value):
+        if value is not None and self.instance:
+            current_beds = Bed.objects.filter(room__ward=self.instance).count()
+            if value < current_beds:
+                raise serializers.ValidationError("Capacity cannot be lower than the number of registered beds.")
+        return value
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -36,7 +43,18 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ["id", "ward", "ward_name", "room_number", "room_type"]
+        fields = ["id", "ward", "ward_name", "room_number", "room_type", "capacity"]
+
+    def validate(self, attrs):
+        ward = attrs.get("ward", getattr(self.instance, "ward", None))
+        capacity = attrs.get("capacity", getattr(self.instance, "capacity", None))
+        if ward and not ward.is_active:
+            raise serializers.ValidationError({"ward": "Rooms can only be managed in an active ward."})
+        if self.instance and ward != self.instance.ward and self.instance.beds.exists():
+            raise serializers.ValidationError({"ward": "Move or remove the room's beds before changing its ward."})
+        if capacity is not None and self.instance and capacity < self.instance.beds.count():
+            raise serializers.ValidationError({"capacity": "Capacity cannot be lower than the number of registered beds."})
+        return attrs
 
 
 class BedSerializer(serializers.ModelSerializer):
@@ -49,7 +67,26 @@ class BedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bed
         fields = ["id", "room", "room_name", "ward", "ward_name", "bed_number", "status",
-                  "notes", "last_cleaned_at", "current_patient", "current_admission"]
+                  "bed_type", "notes", "last_cleaned_at", "current_patient", "current_admission"]
+        read_only_fields = ["status", "last_cleaned_at"]
+
+    def validate(self, attrs):
+        room = attrs.get("room", getattr(self.instance, "room", None))
+        if not room:
+            return attrs
+        if not room.ward.is_active:
+            raise serializers.ValidationError({"room": "Beds can only be registered in an active ward."})
+        if self.instance and room != self.instance.room and self.instance.assignment_history.filter(released_at__isnull=True).exists():
+            raise serializers.ValidationError({"room": "An occupied bed cannot be moved to another room."})
+        if room.capacity is not None:
+            occupied_slots = room.beds.exclude(pk=getattr(self.instance, "pk", None)).count()
+            if occupied_slots >= room.capacity:
+                raise serializers.ValidationError({"room": "This room has reached its configured bed capacity."})
+        if room.ward.capacity is not None:
+            ward_beds = Bed.objects.filter(room__ward=room.ward).exclude(pk=getattr(self.instance, "pk", None)).count()
+            if ward_beds >= room.ward.capacity:
+                raise serializers.ValidationError({"room": "This ward has reached its configured bed capacity."})
+        return attrs
 
     def get_current_admission(self, obj):
         admission = obj.current_admission
@@ -132,7 +169,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         bed = attrs.get("bed")
-        if bed and bed.status not in (Bed.STATUS_AVAILABLE, Bed.STATUS_RESERVED):
+        if bed and bed.status != Bed.STATUS_AVAILABLE:
             raise serializers.ValidationError({"bed": "Only an available bed can be assigned."})
         return attrs
 
@@ -311,6 +348,7 @@ class InpatientStatsSerializer(serializers.Serializer):
     available_beds = serializers.IntegerField()
     occupied_beds = serializers.IntegerField()
     reserved_beds = serializers.IntegerField()
+    unavailable_beds = serializers.IntegerField(required=False)
     admitted_patients = serializers.IntegerField()
     active_icu_patients = serializers.IntegerField()
     pending_handovers = serializers.IntegerField()

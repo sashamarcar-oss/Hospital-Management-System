@@ -36,7 +36,7 @@ def audit_log(
 
 
 def notify(recipient, title, message, notification_type=Notification.TYPE_GENERAL, link="", related_module="", related_object_id=None, priority=Notification.PRIORITY_NORMAL):
-    """Create an in-app notification. Email delivery is queued via Celery when available."""
+    """Persist an in-app notification and queue email only after its transaction commits."""
     notification = Notification.objects.create(
         recipient=recipient,
         title=title,
@@ -47,14 +47,18 @@ def notify(recipient, title, message, notification_type=Notification.TYPE_GENERA
         related_object_id=related_object_id,
         priority=priority,
     )
+    transaction.on_commit(lambda notification_id=notification.id: _queue_notification_email(notification_id))
+    return notification
+
+
+def _queue_notification_email(notification_id):
     try:
         from apps.core.tasks import send_notification_email
 
-        send_notification_email.apply_async(args=[notification.id], retry=False)
+        send_notification_email.apply_async(args=[notification_id], retry=False)
     except Exception:
-        # Redis/Celery unavailable - email silently skipped, in-app notification remains.
+        # In-app delivery is already committed; email can be retried independently.
         pass
-    return notification
 
 
 def notify_many(recipients, title, message, notification_type=Notification.TYPE_GENERAL, link=""):

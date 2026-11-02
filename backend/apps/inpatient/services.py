@@ -32,14 +32,58 @@ def _validate_bed_assignable(admission, bed):
         raise BedManagementError("A discharged patient cannot be assigned a bed.")
     if admission.status == Admission.STATUS_TRANSFERRED and not admission.bed_id:
         raise BedManagementError("This admission has been transferred out and is no longer on a bed.")
+    if not bed.room.ward.is_active:
+        raise BedManagementError("Beds in an inactive ward cannot be assigned.")
+    active = bed.assignment_history.filter(released_at__isnull=True).select_related("admission").first()
     if bed.status in (Bed.STATUS_MAINTENANCE, Bed.STATUS_OUT_OF_SERVICE):
         raise BedManagementError("The bed is not available for assignment (maintenance or out of service).")
     if bed.status == Bed.STATUS_CLEANING:
         raise BedManagementError("The bed is under cleaning and cannot be assigned yet.")
-
-    active = bed.assignment_history.filter(released_at__isnull=True).select_related("admission").first()
+    if bed.status == Bed.STATUS_OCCUPIED:
+        raise BedManagementError("This bed is already occupied or reserved.")
+    if bed.status == Bed.STATUS_RESERVED and (not active or active.admission_id != admission.pk):
+        raise BedManagementError("This bed is reserved for another admission.")
     if active and active.admission_id != admission.pk:
         raise BedManagementError("This bed is already occupied or reserved.")
+
+
+def _create_configured_bed_charge(assignment, user):
+    """Apply configured room/bed tariffs once per bed assignment."""
+    from apps.billing.models import ChargeType, InvoiceItem
+    from apps.billing.utils import get_or_create_open_invoice
+
+    tariffs = [
+        ("room", f"ROOM_{assignment.room.room_type.upper()}", "ROOM",
+         f"Room charge: {assignment.room.room_number} ({assignment.room.room_type})"),
+        ("bed", f"BED_{assignment.bed.bed_type.upper()}", "BED",
+         f"Bed charge: {assignment.bed.bed_type} ({assignment.bed})"),
+    ]
+    configured = []
+    for category, specific_code, fallback_code, description in tariffs:
+        charge_type = ChargeType.objects.filter(
+            category=category, is_active=True, code=specific_code
+        ).first() or ChargeType.objects.filter(
+            category=category, is_active=True, code=fallback_code
+        ).first()
+        if charge_type:
+            configured.append((charge_type, description))
+    if not configured:
+        return
+
+    invoice = get_or_create_open_invoice(assignment.admission.patient, created_by=user)
+    for charge_type, description in configured:
+        InvoiceItem.objects.get_or_create(
+            bed_assignment=assignment,
+            charge_type=charge_type,
+            defaults={
+                "invoice": invoice,
+                "description": description,
+                "quantity": 1,
+                "unit_price": charge_type.default_price,
+                "admission": assignment.admission,
+                "created_by": user,
+            },
+        )
 
 
 @transaction.atomic
@@ -89,6 +133,7 @@ def assign_patient_to_bed(
         notes=notes,
         created_by=user,
     )
+    _create_configured_bed_charge(assignment, user)
     admission.ward = bed.room.ward
     admission.room = bed.room
     admission.bed = bed
@@ -134,7 +179,7 @@ def transfer_patient_bed(admission, new_bed, user, reason="Transfer", notes=""):
     _validate_bed_assignable(admission, new_bed)
 
     old_bed = admission.bed
-    old_assignment.release(user=user, reason=f"Transfer to {new_bed.bed_number}")
+    old_assignment.release(user=user, reason=f"Transfer: {reason} to {new_bed.bed_number}")
     Bed.objects.filter(pk=old_bed.id).update(status=Bed.STATUS_AVAILABLE)
 
     new_bed.status = Bed.STATUS_OCCUPIED
@@ -150,6 +195,7 @@ def transfer_patient_bed(admission, new_bed, user, reason="Transfer", notes=""):
         notes=notes,
         created_by=user,
     )
+    _create_configured_bed_charge(new_assignment, user)
     admission.ward = new_bed.room.ward
     admission.room = new_bed.room
     admission.bed = new_bed

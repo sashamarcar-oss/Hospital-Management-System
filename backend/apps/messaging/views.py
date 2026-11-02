@@ -8,6 +8,8 @@ from apps.core.models import AuditLog
 from apps.core.services import audit_log, notify
 from apps.messaging.models import Conversation, Message
 from apps.messaging.serializers import ConversationSerializer, MessageSerializer
+from apps.accounts.models import User
+from apps.accounts.serializers import UserBriefSerializer
 
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
@@ -15,6 +17,16 @@ class ConversationViewSet(viewsets.ModelViewSet):
     search_fields = ["participants__first_name", "participants__last_name", "participants__username", "messages__content"]
     def get_queryset(self): return Conversation.objects.filter(participants=self.request.user).prefetch_related("participants", "messages__sender").distinct()
     def perform_create(self, serializer): serializer.save()
+    @action(detail=False, methods=["get"], url_path="staff")
+    def staff(self, request):
+        """Return active staff accounts that can be contacted through internal messaging."""
+        queryset = User.objects.filter(is_active=True, is_patient_account=False, staff_profile__isnull=False).exclude(pk=request.user.pk).select_related("role")
+        search = request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(Q(first_name__icontains=search) | Q(last_name__icontains=search) | Q(username__icontains=search))
+        queryset = queryset.order_by("first_name", "last_name")
+        serializer = UserBriefSerializer(queryset, many=True)
+        return Response(serializer.data)
     @action(detail=True, methods=["get", "post"], url_path="messages")
     def messages(self, request, pk=None):
         conversation = self.get_object()
